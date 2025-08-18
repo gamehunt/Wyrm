@@ -1,0 +1,6 @@
+int main() {
+    char* str = "test 123456";
+    int v = 12345;
+    double d = 1.22;
+    return 0;
+}
