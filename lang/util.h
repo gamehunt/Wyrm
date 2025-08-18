@@ -7,4 +7,10 @@
         return code; \
     } 
 
+#define WITH_CODE_GOTO(c, message) \
+    if((code = c)) { \
+        printf(message, code); \
+        goto error; \
+    } 
+
 #endif

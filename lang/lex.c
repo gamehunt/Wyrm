@@ -1,11 +1,18 @@
-#include "util.h"
-#include <ctype.h>
 #include <lex.h>
+
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "map.h"
+#include "util.h"
+
 #define STREAM_EOF (1 << 0)
+
+DEFINE_MAP_TYPE(enum lexem_type, const char*, lexem, builtin_string_hash, builtin_string_comparator)
+
+lexem_map* _reserved_words;
 
 static void _lex_stream_append(lexem_stream* stream, lexem* s) {
     if(!stream->capacity) {
@@ -41,8 +48,22 @@ lexem* _lex_create_token(lexem_stream* s, enum lexem_type type) {
 
 #define DOUBLE_MATCH(start, next, type1, type2) \
     case start: \
-        _lex_create_token(stream, _match(is, next) ? type2 : type1); \
+        SUBMATCH(next, type2) \
+        FALLBACK(type1) \
         break;
+
+#define SUBMATCH_CALL(char, code) \
+    if(_match(is, char)) { \
+        code \
+    } else
+
+#define SUBMATCH(char, type) \
+    SUBMATCH_CALL(char, _lex_create_token(stream, type);)
+
+#define FALLBACK(type) \
+    { \
+        _lex_create_token(stream, type); \
+    }
 
 #define IGNORE(char) \
     case char: \
@@ -56,9 +77,6 @@ lexem* _lex_create_token(lexem_stream* s, enum lexem_type type) {
 #define COMMENT() \
     case '/': \
         if (_match(is, '/')) { \
-            while(_current(is) != '\n') { \
-                _advance(is); \
-            } \
         } else { \
             _lex_create_token(stream, SLASH); \
         } \
@@ -91,6 +109,13 @@ static char _current(input_stream* s) {
         return '\0';
     }
     return s->data[s->ptr];
+}
+
+static char _next(input_stream* s) {
+    if(_is_eof(s)) {
+        return '\0';
+    }
+    return s->data[s->ptr + 1];
 }
 
 static char _advance(input_stream* s) {
@@ -190,14 +215,75 @@ static int identifier(input_stream* input, lexem_stream* stream) {
         _advance(input);
     } 
 
-    lexem* l = _lex_create_token(stream, IDENTIFIER);
-    l->string_value = _slice(input, start);
+    char* ident = _slice(input, start);
+
+    enum lexem_type* type = lexem_map_get(_reserved_words, ident);
+
+    lexem* l = NULL;
+
+    if(type) {
+        l = _lex_create_token(stream, *type);
+    } else {
+        l = _lex_create_token(stream, IDENTIFIER);
+    }
+
+    l->string_value = ident;
 
     return 0;
 }
 
-int lex(char* const input, lexem_stream* stream) {
+static int comment(input_stream* input, int multiline) {
+    if(multiline) {
+        while((_current(input) != '*' || _next(input) != '/') && !_is_eof(input)) {
+            char c = _advance(input);
+            if(c == '/' && _match(input, '*')) {
+                comment(input, 1);
+            }
+        }
+        if(_is_eof(input)) {
+            return 1;
+        } else {
+            _advance(input);
+            _advance(input);
+        }
+    } else {
+        while(_current(input) != '\n' && !_is_eof(input)) {
+            _advance(input);
+        }
+    }
+
+    return 0;
+}
+
+void lex_init() {
+    _reserved_words = lexem_map_create();
+
+    lexem_map_insert(_reserved_words, "while", WHILE);
+    lexem_map_insert(_reserved_words, "for", FOR);
+    lexem_map_insert(_reserved_words, "do", DO);
+    lexem_map_insert(_reserved_words, "if", IF);
+    lexem_map_insert(_reserved_words, "switch", SWITCH);
+    lexem_map_insert(_reserved_words, "u8", U8);
+    lexem_map_insert(_reserved_words, "u16", U16);
+    lexem_map_insert(_reserved_words, "u32", U32);
+    lexem_map_insert(_reserved_words, "u64", U64);
+    lexem_map_insert(_reserved_words, "i8", I8);
+    lexem_map_insert(_reserved_words, "i16", I16);
+    lexem_map_insert(_reserved_words, "i32", I32);
+    lexem_map_insert(_reserved_words, "i64", I64);
+    lexem_map_insert(_reserved_words, "float", FLOAT);
+    lexem_map_insert(_reserved_words, "double", DOUBLE);
+    lexem_map_insert(_reserved_words, "str", STR);
+    lexem_map_insert(_reserved_words, "const", CONST);
+    lexem_map_insert(_reserved_words, "void", VOID);
+    lexem_map_insert(_reserved_words, "null", NIL);
+    lexem_map_insert(_reserved_words, "true", TRUE);
+    lexem_map_insert(_reserved_words, "false", FALSE);
+}
+
+int lex(char* const input, lexem_stream** _stream) {
     input_stream* is;
+    lexem_stream* stream = lex_stream_create();
 
     int code = 0;
     WITH_CODE(_stream_from_input(input, &is), "Failed to create input stream. Code: %d");
@@ -206,26 +292,63 @@ int lex(char* const input, lexem_stream* stream) {
         char c = _advance(is);
         switch(c) {
         SIMPLE_MATCH(';', SEMILOCON)
+        SIMPLE_MATCH(':', COLON)
         SIMPLE_MATCH(',', PERIOD)
         SIMPLE_MATCH('.', DOT)
-        SIMPLE_MATCH('+', PLUS)
-        SIMPLE_MATCH('*', ASTERISK)
         SIMPLE_MATCH('{', LBRACE)
         SIMPLE_MATCH('}', RBRACE)
-        SIMPLE_MATCH('[', LSQBRACE)
-        SIMPLE_MATCH(']', RSQBRACE)
+        SIMPLE_MATCH('#', HASH)
+        case '~':
+            SUBMATCH('=', TILDA_EQUAL)
+            FALLBACK(TILDA)
+        break;
+        case '[':
+            SUBMATCH('[', LSQBRACE_DOUBLE)
+            FALLBACK(LSQBRACE)
+        break;
+        case ']':
+            SUBMATCH(']', RSQBRACE_DOUBLE)
+            FALLBACK(RSQBRACE)
+        break;
         SIMPLE_MATCH('(', LPAREN)
         SIMPLE_MATCH(')', RPAREN)
         DOUBLE_MATCH('=', '=', EQUAL, EQUAL_EQUAL)
         DOUBLE_MATCH('!', '=', BANG, BANG_EQUAL)
-        DOUBLE_MATCH('>', '=', GREATER, GREATER_EQUAL)
-        DOUBLE_MATCH('<', '=', LESS, LESS_EQUAL)
-        DOUBLE_MATCH('-', '>', MINUS, POINTER)
+        case '>':
+            SUBMATCH('>', DOUBLE_GREATER)
+            SUBMATCH('=', GREATER_EQUAL)
+            FALLBACK(GREATER)
+        break;
+        case '<':
+            SUBMATCH('<', DOUBLE_LESS)
+            SUBMATCH('=', LESS_EQUAL)
+            FALLBACK(GREATER)
+        break;
+        case '-':
+            SUBMATCH('>', POINTER)
+            SUBMATCH('-', DOUBLE_MINUS)
+            SUBMATCH('=', MINUS_EQUAL)
+            FALLBACK(MINUS)
+        break;
+        case '+':
+            SUBMATCH('+', DOUBLE_PLUS)
+            SUBMATCH('=', PLUS_EQUAL)
+            FALLBACK(PLUS)
+        break;
+        case '*':
+            SUBMATCH('=', ASTERISK_EQUAL)
+            FALLBACK(ASTERISK)
+        break;
+        case '/':
+            SUBMATCH('=', SLASH_EQUAL)
+            SUBMATCH_CALL('/', comment(is, 0);)
+            SUBMATCH_CALL('*', WITH_CODE(comment(is, 1), "Unterminated multiline comment. Code: %d");)
+            FALLBACK(SLASH)
+        break;
         IGNORE(' ')
         IGNORE('\t')
         IGNORE('\r')
         NEWLINE()
-        COMMENT()
         STRING()
         default:
             if(isdigit(c)) {
@@ -238,6 +361,8 @@ int lex(char* const input, lexem_stream* stream) {
             }
         }
     }
+
+    *_stream = stream;
 
     return 0;
 }
@@ -261,4 +386,15 @@ lexem* lex_stream_current(lexem_stream* stream) {
         return NULL;
     }
     return stream->lexems[stream->ptr];
+}
+
+void lex_stream_free(lexem_stream* stream) {
+    for(int i = 0; i < stream->size; i++) {
+        if(stream->lexems[i]->string_value) {
+            free(stream->lexems[i]->string_value);
+        }
+        free(stream->lexems[i]);
+    }
+    free(stream->lexems);
+    free(stream);
 }

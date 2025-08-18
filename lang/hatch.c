@@ -1,3 +1,4 @@
+#include "syntax.h"
 #include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -83,23 +84,28 @@ int read_file(const char* path, char** buffer_ptr) {
 
 int compile(char* const in) {
     int code = 0;
-    lexem_stream* tokens = lex_stream_create();
-    WITH_CODE(lex(in, tokens), "Failed to parse tokens. Code: %d");
     
-    for(int i = 0; i < tokens->size; i++) {
-        printf("%d %s %d %f\n", tokens->lexems[i]->type,
-                tokens->lexems[i]->string_value,
-                tokens->lexems[i]->integer_value,
-                tokens->lexems[i]->double_value);
-    }
+    lexem_stream* tokens;
+    syntax_tree* ast;
 
-    return 0;
+    WITH_CODE_GOTO(lex(in, &tokens), "Failed to parse tokens. Code: %d");
+    WITH_CODE_GOTO(syntax_build_tree(tokens, &ast), "Failed to parse tokens. Code: %d");
+    
+error:
+    lex_stream_free(tokens);
+
+    return code;
 }
 
 int main(int argc, const char** argv) {
     int code = 0;
     
-    WITH_CODE(parse_arguments(argc, argv), "Failed to parse arguments. Code: %d\n");
+    if((code = parse_arguments(argc, argv))) {
+        help();
+        return 0;
+    }
+
+    lex_init();
 
     for(int i = 0; i < inputs_amount; i++) {
         char* buffer = NULL;

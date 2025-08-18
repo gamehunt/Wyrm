@@ -1,6 +1,17 @@
-int main() {
+// This is comment rawr
+// This is second rawr
+
+/* 
+ * Multiline comment
+ * Rawr
+ */
+
+i32 main() {
     char* str = "test 123456";
-    int v = 12345;
+    i32 v = 12345;
     double d = 1.22;
+    for(int i = 0; i < 10; i++) {
+        printf("TEST");
+    }
     return 0;
 }
