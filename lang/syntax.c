@@ -155,8 +155,7 @@ void syntax_consume_token(token_stream* stream, enum lexem required) {
 	if(current->type == required) {
 		lex_stream_advance(stream);
 	} else {
-		// PANIC
-		printf("Invalid token: %s (needed LPAREN)\n", lex_lexem_to_string(current->type));
+		syntax_error(current, "expected ')'");
 	}
 }
 
