@@ -141,7 +141,7 @@ expr* term(token_stream* s) {
 		return _make_group_expr(e);
 	}
 
-	return NULL;
+	syntax_error(lex_stream_current(s), "Expression expected");
 }
 
 expr* unary_postfix(token_stream* s) {

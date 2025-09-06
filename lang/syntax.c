@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <setjmp.h>
 #include <stdio.h>
 #include <syntax.h>
 #include <stdlib.h>
@@ -31,22 +32,26 @@ void syntax_tree_free(syntax_tree* tree) {
     free(tree);
 }
 
+static jmp_buf _error_restore_context;
+
 int syntax_build_tree(token_stream* stream, syntax_tree** result) {
     syntax_tree* tree = syntax_tree_create();
 
-	for(int i = 0; i < stream->size; i++) {
-		printf("%s ", lex_lexem_to_string(stream->tokens[i]->type));
+	// for(int i = 0; i < stream->size; i++) {
+	// 	printf("%s ", lex_lexem_to_string(stream->tokens[i]->type));
+	// }
+	// printf("\n");
+
+	if(setjmp(_error_restore_context) == 0) {
+		expr* exp = expression(stream);
+		expr_accept(exp, _ast_printer);
+    	*result = tree;
+    	return 0;
+	} else {
+		free(tree);
+		*result = NULL;
+		return 1;
 	}
-	printf("\n");
-
-	expr* exp = expression(stream);
-
-	assert(exp != NULL);
-
-	expr_accept(exp, _ast_printer);
-
-    *result = tree;
-    return 0;
 }
 
 
@@ -156,5 +161,6 @@ void syntax_consume_token(token_stream* stream, enum lexem required) {
 }
 
 void syntax_error(token* l, const char* message) {
-
+	printf("Syntax error: unexpected %s at line %d: %s\n", lex_lexem_to_string(l->type), l->line + 1, message);
+	longjmp(_error_restore_context, 1);
 }

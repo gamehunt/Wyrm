@@ -88,8 +88,8 @@ int compile(char* const in) {
     token_stream* tokens;
     syntax_tree* ast;
 
-    WITH_CODE_GOTO(lex(in, &tokens), "Failed to parse tokens. Code: %d");
-    WITH_CODE_GOTO(syntax_build_tree(tokens, &ast), "Failed to parse tokens. Code: %d");
+    WITH_CODE_GOTO(lex(in, &tokens), "Failed to parse tokens. Code: %d\n");
+    WITH_CODE_GOTO(syntax_build_tree(tokens, &ast), "Failed to build syntax tree. Code: %d\n");
     
 error:
     lex_stream_free(tokens);

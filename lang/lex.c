@@ -28,9 +28,10 @@ static void _lex_stream_append(token_stream* stream, token* s) {
     stream->size++;
 }
 
-token* _lex_create_token(token_stream* s, enum lexem type) {
+token* _lex_create_token(token_stream* s, enum lexem type, int line) {
     token* l = malloc(sizeof(token));
     l->type = type;
+	l->line = line;
     l->string_value = NULL;
     l->integer_value = 0;
     l->double_value = 0;
@@ -40,12 +41,7 @@ token* _lex_create_token(token_stream* s, enum lexem type) {
 
 #define SIMPLE_MATCH(char, type) \
     case char: \
-        _lex_create_token(stream, type); \
-        break;
-
-#define SIMPLE_MATCH(char, type) \
-    case char: \
-        _lex_create_token(stream, type); \
+        _lex_create_token(stream, type, is->line); \
         break;
 
 #define DOUBLE_MATCH(start, next, type1, type2) \
@@ -60,11 +56,11 @@ token* _lex_create_token(token_stream* s, enum lexem type) {
     } else
 
 #define SUBMATCH(char, type) \
-    SUBMATCH_CALL(char, _lex_create_token(stream, type);)
+    SUBMATCH_CALL(char, _lex_create_token(stream, type, is->line);)
 
 #define FALLBACK(type) \
     { \
-        _lex_create_token(stream, type); \
+        _lex_create_token(stream, type, is->line); \
     }
 
 #define IGNORE(char) \
@@ -170,7 +166,7 @@ static int string(input_stream* input, token_stream* stream) {
         return 1;
     }
 
-    token* l = _lex_create_token(stream, STRING);
+    token* l = _lex_create_token(stream, STRING, input->line);
     l->string_value = _slice(input, start);
 
     _advance(input);
@@ -198,10 +194,10 @@ static int number(input_stream* input, token_stream* stream) {
     char* tmp = _slice(input, start);
 
     if(d == 0) {
-        token* s = _lex_create_token(stream, INTEGER);
+        token* s = _lex_create_token(stream, INTEGER, input->line);
         s->integer_value = atoi(tmp);
     } else {
-        token* s = _lex_create_token(stream, NUMERIC);
+        token* s = _lex_create_token(stream, NUMERIC, input->line);
         s->double_value = atof(tmp);
     }
 
@@ -225,9 +221,9 @@ static int identifier(input_stream* input, token_stream* stream) {
     token* l = NULL;
 
     if(type) {
-        l = _lex_create_token(stream, *type);
+        l = _lex_create_token(stream, *type, input->line);
     } else {
-        l = _lex_create_token(stream, IDENTIFIER);
+        l = _lex_create_token(stream, IDENTIFIER, input->line);
     }
 
     l->string_value = ident;
@@ -502,7 +498,8 @@ const char* lex_lexem_to_string(enum lexem t) {
     LT(TILDA)
     LT(TILDA_EQUAL)
     LT(IDENTIFIER)
-	LT(_EOF)
+	case _EOF:
+		return "EOF";
 	default:
 		return "UNKNOWN";
 	}

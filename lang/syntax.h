@@ -33,6 +33,6 @@ int syntax_match_tokens(token_stream* stream, int count, ...);
 #define syntax_match_token(s, t) syntax_match_tokens(s, 1, t)
 
 void syntax_consume_token(token_stream* stream, enum lexem token);
-void syntax_error(token* l, const char* message);
+void syntax_error(token* l, const char* message) __attribute__((noreturn));
 
 #endif
