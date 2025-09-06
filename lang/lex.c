@@ -10,24 +10,26 @@
 
 #define STREAM_EOF (1 << 0)
 
-DEFINE_MAP_TYPE(enum lexem_type, const char*, lexem, builtin_string_hash, builtin_string_comparator)
+DEFINE_MAP_TYPE(enum lexem, const char*, token, builtin_string_hash, builtin_string_comparator)
 
-lexem_map* _reserved_words;
+token_map* _reserved_words;
 
-static void _lex_stream_append(lexem_stream* stream, lexem* s) {
+static token _eof_token = {.type = _EOF};
+
+static void _lex_stream_append(token_stream* stream, token* s) {
     if(!stream->capacity) {
         stream->capacity = 1;
-        stream->lexems = malloc(sizeof(lexem*) * stream->capacity);
+        stream->tokens = malloc(sizeof(token*) * stream->capacity);
     } else if (stream->capacity <= stream->size) {
         stream->capacity *= 2; 
-        stream->lexems = realloc(stream->lexems, sizeof(lexem*) * stream->capacity);
+        stream->tokens = realloc(stream->tokens, sizeof(token*) * stream->capacity);
     }
-    stream->lexems[stream->size] = s;
+    stream->tokens[stream->size] = s;
     stream->size++;
 }
 
-lexem* _lex_create_token(lexem_stream* s, enum lexem_type type) {
-    lexem* l = malloc(sizeof(lexem));
+token* _lex_create_token(token_stream* s, enum lexem type) {
+    token* l = malloc(sizeof(token));
     l->type = type;
     l->string_value = NULL;
     l->integer_value = 0;
@@ -152,7 +154,7 @@ static int _stream_from_input(char* const input, input_stream** result) {
     return 0;
 }
 
-static int string(input_stream* input, lexem_stream* stream) {
+static int string(input_stream* input, token_stream* stream) {
     _advance(input);
 
     int start = input->ptr;
@@ -168,7 +170,7 @@ static int string(input_stream* input, lexem_stream* stream) {
         return 1;
     }
 
-    lexem* l = _lex_create_token(stream, STRING);
+    token* l = _lex_create_token(stream, STRING);
     l->string_value = _slice(input, start);
 
     _advance(input);
@@ -176,7 +178,7 @@ static int string(input_stream* input, lexem_stream* stream) {
     return 0;
 }
 
-static int number(input_stream* input, lexem_stream* stream) {
+static int number(input_stream* input, token_stream* stream) {
     int start = input->ptr;
 
     int d = 0;
@@ -196,10 +198,10 @@ static int number(input_stream* input, lexem_stream* stream) {
     char* tmp = _slice(input, start);
 
     if(d == 0) {
-        lexem* s = _lex_create_token(stream, INTEGER);
+        token* s = _lex_create_token(stream, INTEGER);
         s->integer_value = atoi(tmp);
     } else {
-        lexem* s = _lex_create_token(stream, NUMERIC);
+        token* s = _lex_create_token(stream, NUMERIC);
         s->double_value = atof(tmp);
     }
 
@@ -208,7 +210,7 @@ static int number(input_stream* input, lexem_stream* stream) {
     return 0;
 }
 
-static int identifier(input_stream* input, lexem_stream* stream) {
+static int identifier(input_stream* input, token_stream* stream) {
 
     int start = input->ptr;
 
@@ -218,9 +220,9 @@ static int identifier(input_stream* input, lexem_stream* stream) {
 
     char* ident = _slice(input, start);
 
-    enum lexem_type* type = lexem_map_get(_reserved_words, ident);
+    enum lexem* type = token_map_get(_reserved_words, ident);
 
-    lexem* l = NULL;
+    token* l = NULL;
 
     if(type) {
         l = _lex_create_token(stream, *type);
@@ -257,34 +259,34 @@ static int comment(input_stream* input, int multiline) {
 }
 
 void lex_init() {
-    _reserved_words = lexem_map_create();
+    _reserved_words = token_map_create();
 
-    lexem_map_insert(_reserved_words, "while", WHILE);
-    lexem_map_insert(_reserved_words, "for", FOR);
-    lexem_map_insert(_reserved_words, "do", DO);
-    lexem_map_insert(_reserved_words, "if", IF);
-    lexem_map_insert(_reserved_words, "switch", SWITCH);
-    lexem_map_insert(_reserved_words, "u8", U8);
-    lexem_map_insert(_reserved_words, "u16", U16);
-    lexem_map_insert(_reserved_words, "u32", U32);
-    lexem_map_insert(_reserved_words, "u64", U64);
-    lexem_map_insert(_reserved_words, "i8", I8);
-    lexem_map_insert(_reserved_words, "i16", I16);
-    lexem_map_insert(_reserved_words, "i32", I32);
-    lexem_map_insert(_reserved_words, "i64", I64);
-    lexem_map_insert(_reserved_words, "float", FLOAT);
-    lexem_map_insert(_reserved_words, "double", DOUBLE);
-    lexem_map_insert(_reserved_words, "str", STR);
-    lexem_map_insert(_reserved_words, "const", CONST);
-    lexem_map_insert(_reserved_words, "void", VOID);
-    lexem_map_insert(_reserved_words, "null", NIL);
-    lexem_map_insert(_reserved_words, "true", TRUE);
-    lexem_map_insert(_reserved_words, "false", FALSE);
+    token_map_insert(_reserved_words, "while", WHILE);
+    token_map_insert(_reserved_words, "for", FOR);
+    token_map_insert(_reserved_words, "do", DO);
+    token_map_insert(_reserved_words, "if", IF);
+    token_map_insert(_reserved_words, "switch", SWITCH);
+    token_map_insert(_reserved_words, "u8", U8);
+    token_map_insert(_reserved_words, "u16", U16);
+    token_map_insert(_reserved_words, "u32", U32);
+    token_map_insert(_reserved_words, "u64", U64);
+    token_map_insert(_reserved_words, "i8", I8);
+    token_map_insert(_reserved_words, "i16", I16);
+    token_map_insert(_reserved_words, "i32", I32);
+    token_map_insert(_reserved_words, "i64", I64);
+    token_map_insert(_reserved_words, "float", FLOAT);
+    token_map_insert(_reserved_words, "double", DOUBLE);
+    token_map_insert(_reserved_words, "str", STR);
+    token_map_insert(_reserved_words, "const", CONST);
+    token_map_insert(_reserved_words, "void", VOID);
+    token_map_insert(_reserved_words, "null", NIL);
+    token_map_insert(_reserved_words, "true", TRUE);
+    token_map_insert(_reserved_words, "false", FALSE);
 }
 
-int lex(char* const input, lexem_stream** _stream) {
+int lex(char* const input, token_stream** _stream) {
     input_stream* is;
-    lexem_stream* stream = lex_stream_create();
+    token_stream* stream = lex_stream_create();
 
     int code = 0;
     WITH_CODE(_stream_from_input(input, &is), "Failed to create input stream. Code: %d");
@@ -371,11 +373,11 @@ int lex(char* const input, lexem_stream** _stream) {
     return 0;
 }
 
-lexem_stream* lex_stream_create() {
-    return calloc(1, sizeof(lexem_stream));
+token_stream* lex_stream_create() {
+    return calloc(1, sizeof(token_stream));
 }
 
-void lex_stream_advance(lexem_stream* stream) {
+void lex_stream_advance(token_stream* stream) {
     if(stream->flags & STREAM_EOF) {
         return;
     }
@@ -385,45 +387,45 @@ void lex_stream_advance(lexem_stream* stream) {
     }
 }
 
-lexem* lex_stream_current(lexem_stream* stream) {
+token* lex_stream_current(token_stream* stream) {
     if(stream->flags & STREAM_EOF) {
-        return NULL;
+        return &_eof_token;
     }
-    return stream->lexems[stream->ptr];
+    return stream->tokens[stream->ptr];
 }
 
-lexem* lex_stream_previous(lexem_stream* stream) {
+token* lex_stream_previous(token_stream* stream) {
 	if(stream->ptr == 0) {
-		return NULL;
+        return &_eof_token;
 	}
 
-	return stream->lexems[stream->ptr - 1];
+	return stream->tokens[stream->ptr - 1];
 }
 
-lexem* lex_stream_next(lexem_stream* stream) {
+token* lex_stream_next(token_stream* stream) {
 	if(stream->flags & EOF) {
-		return NULL;
+		return &_eof_token;
 	}
 
 	if(stream->ptr == stream->size - 1) {
-		return NULL;
+		return &_eof_token;
 	}
 
-	return stream->lexems[stream->ptr + 1];
+	return stream->tokens[stream->ptr + 1];
 }
 
-void lex_stream_free(lexem_stream* stream) {
+void lex_stream_free(token_stream* stream) {
     for(int i = 0; i < stream->size; i++) {
-        if(stream->lexems[i]->string_value) {
-            free(stream->lexems[i]->string_value);
+        if(stream->tokens[i]->string_value) {
+            free(stream->tokens[i]->string_value);
         }
-        free(stream->lexems[i]);
+        free(stream->tokens[i]);
     }
-    free(stream->lexems);
+    free(stream->tokens);
     free(stream);
 }
 
-void lex_stream_rewind(lexem_stream* stream) {
+void lex_stream_rewind(token_stream* stream) {
 	stream->ptr = 0;
 	stream->flags = 0;
 }
@@ -432,7 +434,7 @@ void lex_stream_rewind(lexem_stream* stream) {
 	case x: \
 		return #x;
 
-const char* lex_type_to_string(enum lexem_type t) {
+const char* lex_lexem_to_string(enum lexem t) {
 	switch(t) {
     LT(SEMILOCON)
     LT(COLON)
@@ -500,6 +502,7 @@ const char* lex_type_to_string(enum lexem_type t) {
     LT(TILDA)
     LT(TILDA_EQUAL)
     LT(IDENTIFIER)
+	LT(_EOF)
 	default:
 		return "UNKNOWN";
 	}

@@ -31,11 +31,11 @@ void syntax_tree_free(syntax_tree* tree) {
     free(tree);
 }
 
-int syntax_build_tree(lexem_stream* stream, syntax_tree** result) {
+int syntax_build_tree(token_stream* stream, syntax_tree** result) {
     syntax_tree* tree = syntax_tree_create();
 
 	for(int i = 0; i < stream->size; i++) {
-		printf("%s ", lex_type_to_string(stream->lexems[i]->type));
+		printf("%s ", lex_lexem_to_string(stream->tokens[i]->type));
 	}
 	printf("\n");
 
@@ -54,9 +54,9 @@ static void _syntax_printer_visit_unary_expr(unary_expr* e) {
 	printf("[");
 	if(e->postfix) {
 		expr_accept(e->right, _ast_printer);
-		printf(" %s ", lex_type_to_string(e->op));
+		printf(" %s ", lex_lexem_to_string(e->op));
 	} else {
-		printf(" %s ", lex_type_to_string(e->op));
+		printf(" %s ", lex_lexem_to_string(e->op));
 		expr_accept(e->right, _ast_printer);
 	}
 	printf("]");
@@ -65,7 +65,7 @@ static void _syntax_printer_visit_unary_expr(unary_expr* e) {
 static void _syntax_printer_visit_bin_expr(binary_expr* e) {
 	printf("[");
 	expr_accept(e->left, _ast_printer);
-	printf(" %s ", lex_type_to_string(e->op));
+	printf(" %s ", lex_lexem_to_string(e->op));
 	expr_accept(e->right, _ast_printer);
 	printf("]");
 }
@@ -106,7 +106,7 @@ static void _syntax_printer_visit_literal_expr(literal_expr* e) {
 static void _syntax_printer_visit_assignment_expr(assignment_expr* e) {
 	printf("ASSIGNMENT [");
 	expr_accept(e->lvalue, _ast_printer);
-	printf(" %s ", lex_type_to_string(e->op));
+	printf(" %s ", lex_lexem_to_string(e->op));
 	expr_accept(e->rvalue, _ast_printer);
 	printf("]");
 }
@@ -119,12 +119,8 @@ void syntax_walk_tree(syntax_tree* tree, ast_visitor visitor) {
 
 }
 
-int syntax_match_tokens(lexem_stream* stream, int count, ...) {
-	lexem* current = lex_stream_current(stream);
-
-	if(current == NULL) {
-		return 0;
-	}
+int syntax_match_tokens(token_stream* stream, int count, ...) {
+	token* current = lex_stream_current(stream);
 
 	va_list args;
 	va_start(args, count);
@@ -132,7 +128,7 @@ int syntax_match_tokens(lexem_stream* stream, int count, ...) {
 	int r = 0;
 
 	for(int i = 0; i < count; i++) {
-		enum lexem_type t = va_arg(args, enum lexem_type);
+		enum lexem t = va_arg(args, enum lexem);
 		if(t == current->type) {
 			r = 1;
 			break;
@@ -148,13 +144,17 @@ int syntax_match_tokens(lexem_stream* stream, int count, ...) {
 	return r;
 }
 
-void syntax_consume_token(lexem_stream* stream, enum lexem_type token) {
-	lexem* current = lex_stream_current(stream);
+void syntax_consume_token(token_stream* stream, enum lexem required) {
+	token* current = lex_stream_current(stream);
 
-	if(current->type == token) {
+	if(current->type == required) {
 		lex_stream_advance(stream);
 	} else {
 		// PANIC
-		printf("Invalid token: %s (needed LPAREN)\n", lex_type_to_string(current->type));
+		printf("Invalid token: %s (needed LPAREN)\n", lex_lexem_to_string(current->type));
 	}
+}
+
+void syntax_error(token* l, const char* message) {
+
 }

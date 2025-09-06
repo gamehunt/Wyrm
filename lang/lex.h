@@ -1,7 +1,8 @@
 #ifndef _LEX_H
 #define _LEX_H 1
 
-enum lexem_type {
+enum lexem {
+	_EOF,
     SEMILOCON,
     COLON,
     PERIOD,
@@ -71,33 +72,34 @@ enum lexem_type {
 };
 
 typedef struct {
-    enum lexem_type type;
+    enum lexem type;
+	int line;
     char*  string_value;
     int    integer_value;
     double double_value;
-} lexem;
+} token;
 
 typedef struct {
-    lexem** lexems;
+    token** tokens;
     int capacity;
     int size;
     int ptr;
     int flags;
-} lexem_stream;
+} token_stream;
 
-int lex(char* const input,  lexem_stream** stream);
+int lex(char* const input,  token_stream** stream);
 
 void lex_init();
 
-lexem_stream* lex_stream_create();
-void lex_stream_free(lexem_stream* stream);
-void lex_stream_advance(lexem_stream* stream);
-lexem* lex_stream_current(lexem_stream* stream);
-lexem* lex_stream_previous(lexem_stream* stream);
-lexem* lex_stream_next(lexem_stream* stream);
-void lex_stream_rewind(lexem_stream* stream);
+token_stream* lex_stream_create();
+void lex_stream_free(token_stream* stream);
+void lex_stream_advance(token_stream* stream);
+token* lex_stream_current(token_stream* stream);
+token* lex_stream_previous(token_stream* stream);
+token* lex_stream_next(token_stream* stream);
+void lex_stream_rewind(token_stream* stream);
 
-const char* lex_type_to_string(enum lexem_type t);
-#define lex_current_to_string(s) lex_type_to_string(lex_stream_current(s)->type)
+const char* lex_lexem_to_string(enum lexem t);
+#define lex_current_to_string(s) lex_lexem_to_string(lex_stream_current(s)->type)
 
 #endif

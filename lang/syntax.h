@@ -22,16 +22,17 @@ typedef struct {
 typedef struct {
 } syntax_tree;
 
-int syntax_build_tree(lexem_stream* stream, syntax_tree** result);
+int syntax_build_tree(token_stream* stream, syntax_tree** result);
 syntax_tree* syntax_tree_create();
 void syntax_tree_free(syntax_tree* tree);
 
 void syntax_print_tree(syntax_tree* tree);
 void syntax_walk_tree(syntax_tree* tree, ast_visitor visitor);
 
-int syntax_match_tokens(lexem_stream* stream, int count, ...);
+int syntax_match_tokens(token_stream* stream, int count, ...);
 #define syntax_match_token(s, t) syntax_match_tokens(s, 1, t)
 
-void syntax_consume_token(lexem_stream* stream, enum lexem_type token);
+void syntax_consume_token(token_stream* stream, enum lexem token);
+void syntax_error(token* l, const char* message);
 
 #endif

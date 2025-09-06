@@ -85,7 +85,7 @@ int read_file(const char* path, char** buffer_ptr) {
 int compile(char* const in) {
     int code = 0;
     
-    lexem_stream* tokens;
+    token_stream* tokens;
     syntax_tree* ast;
 
     WITH_CODE_GOTO(lex(in, &tokens), "Failed to parse tokens. Code: %d");

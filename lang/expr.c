@@ -4,10 +4,6 @@
 #include <stdlib.h>
 
 void expr_accept(expr* e, ast_visitor visitor) {
-	if(e == NULL) {
-		return;
-	}
-
 	if(visitor.visit_expr) {
 		visitor.visit_expr(e);
 	}
@@ -47,7 +43,7 @@ static expr* _make_expr(enum expr_type type, void* data) {
 	return e;
 }
 
-static expr* _make_binary_expr(expr* a, enum lexem_type op, expr* b) {
+static expr* _make_binary_expr(expr* a, enum lexem op, expr* b) {
 	binary_expr* e = malloc(sizeof(binary_expr));
 	e->left = a;
 	e->op = op;
@@ -55,7 +51,7 @@ static expr* _make_binary_expr(expr* a, enum lexem_type op, expr* b) {
 	return _make_expr(ET_BINARY, e);
 }
 
-static expr* _make_unary_expr(enum lexem_type op, expr* b, int postfix) {
+static expr* _make_unary_expr(enum lexem op, expr* b, int postfix) {
 	unary_expr* e = malloc(sizeof(unary_expr));
 	e->op = op;
 	e->right = b;
@@ -63,7 +59,7 @@ static expr* _make_unary_expr(enum lexem_type op, expr* b, int postfix) {
 	return _make_expr(ET_UNARY, e);
 }
 
-static expr* _make_literal_expr(lexem* l) {
+static expr* _make_literal_expr(token* l) {
 	literal_expr* e = malloc(sizeof(literal_expr));
 	e->value = l;
 	return _make_expr(ET_LITERAL, e);
@@ -75,7 +71,7 @@ static expr* _make_group_expr(expr* inner) {
 	return _make_expr(ET_GROUP, e);
 }
 
-static expr* _make_assignment_expr(expr* a, enum lexem_type op, expr* b) {
+static expr* _make_assignment_expr(expr* a, enum lexem op, expr* b) {
 	assignment_expr* e = malloc(sizeof(assignment_expr));
 	e->lvalue = a;
 	e->op = op;
@@ -134,7 +130,7 @@ static void _free_expr(expr* e) {
 	free(e);
 }
 
-expr* term(lexem_stream* s) {
+expr* term(token_stream* s) {
 	if(syntax_match_tokens(s, 7, 
 				STRING, INTEGER, NUMERIC, 
 				NIL, FALSE, TRUE, IDENTIFIER)) {
@@ -148,8 +144,8 @@ expr* term(lexem_stream* s) {
 	return NULL;
 }
 
-expr* unary_postfix(lexem_stream* s) {
-	lexem* next = lex_stream_next(s);
+expr* unary_postfix(token_stream* s) {
+	token* next = lex_stream_next(s);
 	expr* t = term(s);
 
 	if(next && (next->type == DOUBLE_PLUS || next->type == DOUBLE_MINUS)) {
@@ -160,11 +156,11 @@ expr* unary_postfix(lexem_stream* s) {
 	return t;
 }
 
-expr* unary(lexem_stream* s) {
+expr* unary(token_stream* s) {
 	if(syntax_match_tokens(s, 6, 
 				BANG, MINUS, PLUS, 
 				TILDA, DOUBLE_PLUS, DOUBLE_MINUS)) {
-		lexem* op = lex_stream_previous(s);
+		token* op = lex_stream_previous(s);
 		expr* b = unary(s);
 		return _make_unary_expr(op->type, b, 0);
 	}
@@ -173,11 +169,11 @@ expr* unary(lexem_stream* s) {
 }
 
 
-expr* multiplication(lexem_stream* s) {
+expr* multiplication(token_stream* s) {
 	expr* r = unary(s);
 
 	while(syntax_match_tokens(s, 2, SLASH, ASTERISK)) {
-		lexem* op = lex_stream_previous(s);
+		token* op = lex_stream_previous(s);
 		expr* b = unary(s);
 		r = _make_binary_expr(r, op->type, b);
 	}
@@ -185,11 +181,11 @@ expr* multiplication(lexem_stream* s) {
 	return r;
 }
 
-expr* addition(lexem_stream* s) {
+expr* addition(token_stream* s) {
 	expr* r = multiplication(s);
 
 	while(syntax_match_tokens(s, 2, PLUS, MINUS)) {
-		lexem* op = lex_stream_previous(s);
+		token* op = lex_stream_previous(s);
 		expr* b = multiplication(s);
 		r = _make_binary_expr(r, op->type, b);
 	}
@@ -197,12 +193,12 @@ expr* addition(lexem_stream* s) {
 	return r;
 }
 
-expr* shifts(lexem_stream* s) {
+expr* shifts(token_stream* s) {
 	expr* r = addition(s);
 
 	while(syntax_match_tokens(s, 2, 
 				DOUBLE_LESS, DOUBLE_GREATER)) {
-		lexem* op = lex_stream_previous(s);
+		token* op = lex_stream_previous(s);
 		expr* b = addition(s);
 		r = _make_binary_expr(r, op->type, b);
 	}
@@ -210,12 +206,12 @@ expr* shifts(lexem_stream* s) {
 	return r;
 }
 
-expr* comparison(lexem_stream* s) {
+expr* comparison(token_stream* s) {
 	expr* r = shifts(s);
 
 	while(syntax_match_tokens(s, 4, 
 				LESS, LESS_EQUAL, GREATER, GREATER_EQUAL)) {
-		lexem* op = lex_stream_previous(s);
+		token* op = lex_stream_previous(s);
 		expr* b = shifts(s);
 		r = _make_binary_expr(r, op->type, b);
 	}
@@ -223,23 +219,23 @@ expr* comparison(lexem_stream* s) {
 	return r;
 }
 
-expr* equality(lexem_stream* s) {
-	expr* r = bit_or(s);
+expr* equality(token_stream* s) {
+	expr* r = logic_or(s);
 
 	while(syntax_match_tokens(s, 2, BANG_EQUAL, EQUAL_EQUAL)) {
-		lexem* op = lex_stream_previous(s);
-		expr* b = bit_or(s);
+		token* op = lex_stream_previous(s);
+		expr* b = logic_or(s);
 		r = _make_binary_expr(r, op->type, b);
 	}
 
 	return r;
 }
 
-expr* bit_and(lexem_stream* s) {
+expr* bit_and(token_stream* s) {
 	expr* r = comparison(s);
 
 	while(syntax_match_tokens(s, 1, AMPERSAND)) {
-		lexem* op = lex_stream_previous(s);
+		token* op = lex_stream_previous(s);
 		expr* b = comparison(s);
 		r = _make_binary_expr(r, op->type, b);
 	}
@@ -247,11 +243,11 @@ expr* bit_and(lexem_stream* s) {
 	return r;
 }
 
-expr* bit_xor(lexem_stream* s) {
+expr* bit_xor(token_stream* s) {
 	expr* r = bit_and(s);
 
 	while(syntax_match_tokens(s, 1, XOR)) {
-		lexem* op = lex_stream_previous(s);
+		token* op = lex_stream_previous(s);
 		expr* b = bit_and(s);
 		r = _make_binary_expr(r, op->type, b);
 	}
@@ -259,11 +255,11 @@ expr* bit_xor(lexem_stream* s) {
 	return r;
 }
 
-expr* bit_or(lexem_stream* s) {
+expr* bit_or(token_stream* s) {
 	expr* r = bit_xor(s);
 
 	while(syntax_match_tokens(s, 1, OR)) {
-		lexem* op = lex_stream_previous(s);
+		token* op = lex_stream_previous(s);
 		expr* b = bit_xor(s);
 		r = _make_binary_expr(r, op->type, b);
 	}
@@ -271,11 +267,11 @@ expr* bit_or(lexem_stream* s) {
 	return r;
 }
 
-expr* logic_and(lexem_stream* s) {
+expr* logic_and(token_stream* s) {
 	expr* r = bit_or(s);
 
 	while(syntax_match_tokens(s, 1, DOUBLE_AMPERSAND)) {
-		lexem* op = lex_stream_previous(s);
+		token* op = lex_stream_previous(s);
 		expr* b = bit_or(s);
 		r = _make_binary_expr(r, op->type, b);
 	}
@@ -283,11 +279,11 @@ expr* logic_and(lexem_stream* s) {
 	return r;
 }
 
-expr* logic_or(lexem_stream* s) {
+expr* logic_or(token_stream* s) {
 	expr* r = logic_and(s);
 
 	while(syntax_match_tokens(s, 1, DOUBLE_OR)) {
-		lexem* op = lex_stream_previous(s);
+		token* op = lex_stream_previous(s);
 		expr* b = logic_and(s);
 		r = _make_binary_expr(r, op->type, b);
 	}
@@ -295,13 +291,13 @@ expr* logic_or(lexem_stream* s) {
 	return r;
 }
 
-expr* assignment(lexem_stream* s) {
+expr* assignment(token_stream* s) {
 	expr* l = equality(s);
 
 	while(syntax_match_tokens(s, 5, 
 				EQUAL, PLUS_EQUAL, MINUS_EQUAL, 
 				SLASH_EQUAL, ASTERISK_EQUAL)) {
-		lexem* op = lex_stream_previous(s);
+		token* op = lex_stream_previous(s);
 		expr* r = assignment(s);
 		l = _make_assignment_expr(l, op->type, r);
 	}
@@ -309,6 +305,6 @@ expr* assignment(lexem_stream* s) {
 	return l;
 }
 
-expr* expression(lexem_stream* s) {
+expr* expression(token_stream* s) {
 	return assignment(s);
 }
