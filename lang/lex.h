@@ -34,6 +34,11 @@ enum lexem_type {
     DOUBLE_LESS,
     BANG,
     BANG_EQUAL,
+	AMPERSAND,
+	DOUBLE_AMPERSAND,
+	OR,
+	DOUBLE_OR,
+	XOR,
     POINTER,
     STRING,
     INTEGER,
@@ -88,5 +93,11 @@ lexem_stream* lex_stream_create();
 void lex_stream_free(lexem_stream* stream);
 void lex_stream_advance(lexem_stream* stream);
 lexem* lex_stream_current(lexem_stream* stream);
+lexem* lex_stream_previous(lexem_stream* stream);
+lexem* lex_stream_next(lexem_stream* stream);
+void lex_stream_rewind(lexem_stream* stream);
+
+const char* lex_type_to_string(enum lexem_type t);
+#define lex_current_to_string(s) lex_type_to_string(lex_stream_current(s)->type)
 
 #endif

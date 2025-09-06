@@ -209,6 +209,7 @@ static int number(input_stream* input, lexem_stream* stream) {
 }
 
 static int identifier(input_stream* input, lexem_stream* stream) {
+
     int start = input->ptr;
 
     while(isalnum(_current(input))) {
@@ -314,6 +315,9 @@ int lex(char* const input, lexem_stream** _stream) {
         SIMPLE_MATCH(')', RPAREN)
         DOUBLE_MATCH('=', '=', EQUAL, EQUAL_EQUAL)
         DOUBLE_MATCH('!', '=', BANG, BANG_EQUAL)
+		DOUBLE_MATCH('&', '&', AMPERSAND, DOUBLE_AMPERSAND)
+		DOUBLE_MATCH('|', '|', OR, DOUBLE_OR)
+        SIMPLE_MATCH('^', XOR)
         case '>':
             SUBMATCH('>', DOUBLE_GREATER)
             SUBMATCH('=', GREATER_EQUAL)
@@ -388,6 +392,26 @@ lexem* lex_stream_current(lexem_stream* stream) {
     return stream->lexems[stream->ptr];
 }
 
+lexem* lex_stream_previous(lexem_stream* stream) {
+	if(stream->ptr == 0) {
+		return NULL;
+	}
+
+	return stream->lexems[stream->ptr - 1];
+}
+
+lexem* lex_stream_next(lexem_stream* stream) {
+	if(stream->flags & EOF) {
+		return NULL;
+	}
+
+	if(stream->ptr == stream->size - 1) {
+		return NULL;
+	}
+
+	return stream->lexems[stream->ptr + 1];
+}
+
 void lex_stream_free(lexem_stream* stream) {
     for(int i = 0; i < stream->size; i++) {
         if(stream->lexems[i]->string_value) {
@@ -397,4 +421,86 @@ void lex_stream_free(lexem_stream* stream) {
     }
     free(stream->lexems);
     free(stream);
+}
+
+void lex_stream_rewind(lexem_stream* stream) {
+	stream->ptr = 0;
+	stream->flags = 0;
+}
+
+#define LT(x) \
+	case x: \
+		return #x;
+
+const char* lex_type_to_string(enum lexem_type t) {
+	switch(t) {
+    LT(SEMILOCON)
+    LT(COLON)
+    LT(PERIOD)
+    LT(DOT)
+    LT(PLUS)
+    LT(DOUBLE_PLUS)
+    LT(MINUS)
+    LT(DOUBLE_MINUS)
+    LT(SLASH)
+    LT(ASTERISK)
+    LT(RBRACE)
+    LT(LBRACE)
+    LT(RSQBRACE)
+    LT(LSQBRACE)
+    LT(RSQBRACE_DOUBLE)
+    LT(LSQBRACE_DOUBLE)
+    LT(RPAREN)
+    LT(LPAREN)
+    LT(LESS)
+    LT(GREATER)
+    LT(EQUAL)
+    LT(EQUAL_EQUAL)
+    LT(LESS_EQUAL)
+    LT(GREATER_EQUAL)
+    LT(PLUS_EQUAL)
+    LT(MINUS_EQUAL)
+    LT(ASTERISK_EQUAL)
+    LT(SLASH_EQUAL)
+    LT(DOUBLE_GREATER)
+    LT(DOUBLE_LESS)
+    LT(BANG)
+    LT(BANG_EQUAL)
+	LT(AMPERSAND)
+	LT(DOUBLE_AMPERSAND)
+	LT(OR)
+	LT(DOUBLE_OR)
+	LT(XOR)
+    LT(POINTER)
+    LT(STRING)
+    LT(INTEGER)
+    LT(NUMERIC)
+    LT(WHILE)
+    LT(IF)
+    LT(FOR)
+    LT(DO)
+    LT(SWITCH)
+    LT(U8)
+    LT(U16)
+    LT(U32)
+    LT(U64)
+    LT(I8)
+    LT(I16)
+    LT(I32)
+    LT(I64)
+    LT(FLOAT)
+    LT(DOUBLE)
+    LT(STR)
+    LT(VOID)
+    LT(CONST)
+    LT(NIL)
+    LT(TRUE)
+    LT(FALSE)
+    LT(HASH)
+    LT(TILDA)
+    LT(TILDA_EQUAL)
+    LT(IDENTIFIER)
+	default:
+		return "UNKNOWN";
+	}
 }

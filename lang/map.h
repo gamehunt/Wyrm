@@ -12,7 +12,7 @@
     typedef struct { \
         name##_val_wrapper* data[MAP_SIZE]; \
     } name##_map; \
-    static int name##_hash(key_type key) { \
+    static unsigned int name##_hash(key_type key) { \
         return hash_function(key) % MAP_SIZE; \
     } \
     static name##_map* name##_map_create() { \
@@ -37,7 +37,11 @@
         name##_val_wrapper* wrapper = map->data[hash]; \
         if (wrapper) { \
             if(wrapper->next == NULL) { \
-                return &wrapper->value; \
+				if(key_comparator(wrapper->key, key)) { \
+                	return &wrapper->value; \
+				} else { \
+					return NULL; \
+				} \
             } else { \
                 while(wrapper && key_comparator(wrapper->key, key) == 0) { \
                     wrapper = wrapper->next; \
@@ -86,7 +90,7 @@
         return 0; \
     } 
 
-int builtin_string_hash(const char* str);
+unsigned int builtin_string_hash(const char* str);
 int builtin_string_comparator(const char* a, const char* b);
 
 #endif

@@ -1,9 +1,9 @@
-#include "syntax.h"
 #include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <lex.h>
+#include <syntax.h>
 
 #define ARG_INVALID_FLAG -1
 #define ARG_OUTPUT_FLAG   1

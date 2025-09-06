@@ -1,7 +1,7 @@
 #include <map.h>
 #include <string.h>
 
-int builtin_string_hash(const char* str) {
+unsigned int builtin_string_hash(const char* str) {
     unsigned long hash = 5381;
     int c;
 

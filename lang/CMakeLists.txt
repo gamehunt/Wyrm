@@ -8,4 +8,4 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 add_executable(hatch)
 
 target_include_directories(hatch PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_sources(hatch PRIVATE hatch.c lex.c map.c syntax.c)
+target_sources(hatch PRIVATE hatch.c lex.c map.c syntax.c expr.c)
