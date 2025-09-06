@@ -7,6 +7,7 @@
 
 #include "expr.h"
 #include "lex.h"
+#include "program.h"
 
 static void _syntax_printer_visit_unary_expr(unary_expr* e);
 static void _syntax_printer_visit_bin_expr(binary_expr* e);
@@ -43,8 +44,7 @@ int syntax_build_tree(token_stream* stream, syntax_tree** result) {
 	// printf("\n");
 
 	if(setjmp(_error_restore_context) == 0) {
-		expr* exp = expression(stream);
-		expr_accept(exp, _ast_printer);
+		tree->program = program(stream);
     	*result = tree;
     	return 0;
 	} else {
@@ -121,7 +121,7 @@ void syntax_print_tree(syntax_tree* tree) {
 }
 
 void syntax_walk_tree(syntax_tree* tree, ast_visitor visitor) {
-
+	program_accept(tree->program, visitor);
 }
 
 int syntax_match_tokens(token_stream* stream, int count, ...) {

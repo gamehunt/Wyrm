@@ -9,6 +9,8 @@ struct _unary_expr;
 struct _group_expr;
 struct _literal_expr;
 struct _assignment_expr;
+struct _prog;
+struct _stmt;
 
 typedef struct {
 	void (*visit_expr)(struct _expr* e);
@@ -17,9 +19,12 @@ typedef struct {
 	void (*visit_group_expr)(struct _group_expr* e);
 	void (*visit_literal_expr)(struct _literal_expr* e);
 	void (*visit_assignment_expr)(struct _assignment_expr* e);
+	void (*visit_program)(struct _prog* p);
+	void (*visit_statement)(struct _stmt* s);
 } ast_visitor;
 
 typedef struct {
+	struct _prog* program;
 } syntax_tree;
 
 int syntax_build_tree(token_stream* stream, syntax_tree** result);

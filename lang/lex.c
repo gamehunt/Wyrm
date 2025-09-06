@@ -504,3 +504,7 @@ const char* lex_lexem_to_string(enum lexem t) {
 		return "UNKNOWN";
 	}
 }
+
+int lex_stream_is_eof(token_stream* stream) {
+	return stream->flags & EOF;
+}

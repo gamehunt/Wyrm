@@ -98,6 +98,7 @@ token* lex_stream_current(token_stream* stream);
 token* lex_stream_previous(token_stream* stream);
 token* lex_stream_next(token_stream* stream);
 void lex_stream_rewind(token_stream* stream);
+int lex_stream_is_eof(token_stream* stream);
 
 const char* lex_lexem_to_string(enum lexem t);
 #define lex_current_to_string(s) lex_lexem_to_string(lex_stream_current(s)->type)
