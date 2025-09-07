@@ -22,6 +22,7 @@ static void _syntax_printer_visit_block_stmt(stmt_list* e);
 static void _syntax_printer_visit_if_stmt(conditional* e);
 static void _syntax_printer_visit_for_stmt(for_loop* e);
 static void _syntax_printer_visit_while_stmt(while_loop* e);
+static void _syntax_printer_visit_ret_stmt(expr* e);
 static void _syntax_printer_visit_call_expr(call_expr* e);
 
 
@@ -39,7 +40,8 @@ static ast_visitor _ast_printer = {
 	.visit_for_stmt        = _syntax_printer_visit_for_stmt,
 	.visit_if_stmt         = _syntax_printer_visit_if_stmt,
 	.visit_while_stmt      = _syntax_printer_visit_while_stmt,
-	.visit_call_expr       = _syntax_printer_visit_call_expr
+	.visit_call_expr       = _syntax_printer_visit_call_expr,
+	.visit_ret_stmt        = _syntax_printer_visit_ret_stmt
 };
 
 syntax_tree* syntax_tree_create() {
@@ -133,13 +135,36 @@ static void _syntax_printer_visit_program(prog* e) {
 	printf("]\n");
 }
 
+static void _print_declarator(declarator* d) {
+	switch(d->dtype) {
+		case D_ARRAY:
+			printf("%s[%d] ", ((array_declarator*)d->data)->identifier->string_value, 
+					((array_declarator*)d->data)->identifier->integer_value);
+			break;
+		case D_POINTER:
+			printf("*");
+			_print_declarator((declarator*) d->data);
+			break;
+		case D_FUNC:
+			printf("%s( ", ((func_declarator*)d->data)->identifier->string_value);
+			for(int i = 0; i < ((func_declarator*) d->data)->args->size; i++) {
+				_ast_printer.visit_decl_stmt(((func_declarator*) d->data)->args->data[i]);
+			}
+			printf(") ");
+			break;
+		case D_VAR:
+			printf("%s ", ((var_declarator*) d->data)->identifier->string_value);
+			break;
+	}
+}
+
 static void _syntax_printer_visit_decl_stmt(decl* e) {
 	printf("DECL [");
 	for(int i = 0; i < e->specifiers->size; i++) {
 		printf("%s ", lex_lexem_to_string(e->specifiers->data[i]));
 	}
 	printf("%s ", lex_lexem_to_string(e->type));
-	printf("%s ", e->identifier->string_value);
+	_print_declarator(e->declarator);
 	if(e->initializer) {
 		printf(" := ");
 		expr_accept(e->initializer, _ast_printer);
@@ -213,6 +238,13 @@ static void _syntax_printer_visit_call_expr(call_expr* e) {
 		expr_accept(e->args[i].data[i], _ast_printer);
 	}
 	printf(")]");
+}
+
+static void _syntax_printer_visit_ret_stmt(expr* v) {
+	printf("RET ");
+	if(v) {
+		expr_accept(v, _ast_printer);
+	} 
 }
 
 void syntax_print_tree(syntax_tree* tree) {

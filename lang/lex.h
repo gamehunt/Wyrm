@@ -50,6 +50,7 @@ enum lexem {
     FOR,
     DO,
     SWITCH,
+	RETURN,
     U8,
     U16,
     U32,
@@ -69,7 +70,7 @@ enum lexem {
     HASH,
     TILDA,
     TILDA_EQUAL,
-    IDENTIFIER
+    IDENTIFIER,
 };
 
 typedef struct {

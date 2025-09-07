@@ -34,6 +34,7 @@ typedef struct {
 	void (*visit_if_stmt)(struct _if_stmt* s);
 	void (*visit_for_stmt)(struct _for_stmt* s);
 	void (*visit_while_stmt)(struct _while_stmt* s);
+	void (*visit_ret_stmt)(struct _expr* v);
 	void (*visit_call_expr)(struct _call_expr* s);
 } ast_visitor;
 

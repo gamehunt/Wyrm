@@ -266,6 +266,7 @@ void lex_init() {
     token_map_insert(_reserved_words, "do", DO);
     token_map_insert(_reserved_words, "if", IF);
     token_map_insert(_reserved_words, "switch", SWITCH);
+    token_map_insert(_reserved_words, "return", RETURN);
     token_map_insert(_reserved_words, "u8", U8);
     token_map_insert(_reserved_words, "u16", U16);
     token_map_insert(_reserved_words, "u32", U32);
@@ -482,6 +483,7 @@ const char* lex_lexem_to_string(enum lexem t) {
     LT(FOR)
     LT(DO)
     LT(SWITCH)
+	LT(RETURN)
     LT(U8)
     LT(U16)
     LT(U32)

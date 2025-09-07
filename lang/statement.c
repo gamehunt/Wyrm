@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+LIST_IMPL(decl, decl*)
+
 static int _check_type_or_spec(token_stream* s) {
 	return syntax_check_type(s) || syntax_check_spec(s);
 }
@@ -26,11 +28,15 @@ static stmt* _make_expr_statement(expr* e) {
 	return _make_statement(ST_EXPRESSION, e);
 }
 
-static stmt* _make_decl_statement(spec_list* specs, enum lexem type, token* identifier, expr* initializer) {
+static stmt* _make_ret_statement(expr* e) {
+	return _make_statement(ST_RETURN, e);
+}
+
+static stmt* _make_decl_statement(spec_list* specs, enum lexem type, declarator* declar, expr* initializer) {
 	decl* d = malloc(sizeof(decl));
 	d->specifiers = specs;
 	d->type = type;
-	d->identifier = identifier;
+	d->declarator = declar;
 	d->initializer = initializer;
 	return _make_statement(ST_DECL, d);
 }
@@ -67,6 +73,8 @@ stmt* statement(token_stream* s) {
 		return if_stmt(s);
 	} else if (syntax_match_tokens(s, DO, WHILE)) {
 		return while_stmt(s);
+	} else if (syntax_match_token(s, RETURN)) {
+		return return_stmt(s);
 	} else if(syntax_match_token(s, LBRACE)) {
 		return block(s);
 	} else {
@@ -86,36 +94,6 @@ stmt* block(token_stream* s) {
 	}
 	syntax_consume_token(s, RBRACE, "'}' expected after block statement");
 	return _make_block_statement(l);
-}
-
-stmt* var_decl(token_stream* s) {
-	enum lexem type = _EOF;
-	token* tok = NULL;
-	spec_list* l = spec_list_create();
-
-	while((tok = syntax_match_type(s)) || (tok = syntax_match_spec(s))) {
-		if(syntax_check_token_spec(tok)) {
-			spec_list_append(l, tok->type);
-		} else if (type == _EOF) {
-			type = tok->type;	
-		} else {
-			syntax_error(tok, "only single type specification allowed");
-		}
-	}
-
-	if(type == _EOF) {
-		syntax_error(tok ? tok : lex_stream_current(s), "type specification required");
-	}
-
-	token* identifier = syntax_consume_token(s, IDENTIFIER, "identifier expected");
-
-	expr* initializer = NULL;
-
-	if(syntax_match_token(s, EQUAL)) {
-		initializer = expression(s);	
-	}
-
-	return _make_decl_statement(l, type, identifier, initializer);
 }
 
 stmt* if_stmt(token_stream* s) {
@@ -180,11 +158,78 @@ stmt* while_stmt(token_stream* s) {
 	return _make_while_statement(cond, body, prefix);
 }
 
+declarator* stmt_declarator(token_stream* s) {
+	declarator* d = malloc(sizeof(declarator));
+	if(syntax_match_token(s, ASTERISK)) {
+		d->dtype = D_POINTER;
+		d->data = stmt_declarator(s);
+	} else {
+		token* identifier = syntax_consume_token(s, IDENTIFIER, "identifier expected");
+		if(syntax_match_token(s, LSQBRACE)) {
+			d->dtype = D_ARRAY;
+			array_declarator* d_arr = malloc(sizeof(array_declarator));
+			d_arr->identifier = identifier;
+			d_arr->size = syntax_consume_token(s, INTEGER, "integer expected")->integer_value;
+			d->data = d_arr;
+			syntax_consume_token(s, RSQBRACE, "']' required after array declarator");
+		} else if(syntax_match_token(s, LPAREN)) {
+			d->dtype = D_FUNC;
+			func_declarator* d_func = malloc(sizeof(func_declarator));
+			d_func->identifier = identifier;
+			d_func->args = decl_list_create();
+			while(!syntax_check_token(s, RPAREN)) {
+				stmt* d = declaration(s);
+				if(d->type != ST_DECL) {
+					syntax_error(lex_stream_current(s), "declaration expected");
+				}
+				decl_list_append(d_func->args, d->data);
+			}
+			d->data = d_func;
+			syntax_consume_token(s, RPAREN, "')' required after function declarator");
+		} else {
+			d->dtype = D_VAR;
+			var_declarator* d_var = malloc(sizeof(var_declarator));
+			d_var->identifier = identifier;
+			d->data = d_var;
+		}
+	}
+	return d;
+}
+
 stmt* declaration(token_stream* s) {
 	if(_check_type_or_spec(s)) {
-		return var_decl(s);
+		token* tok = NULL;
+		spec_list* l = spec_list_create();
+
+		while((tok = syntax_match_spec(s))) {
+			spec_list_append(l, tok->type);
+		}
+
+		token* type = syntax_match_type(s);
+
+		if(!type) {
+			syntax_error(lex_stream_current(s), "type specifier required");
+		}
+
+		declarator* d = stmt_declarator(s);
+
+		expr* initializer = NULL;
+
+		if(syntax_match_token(s, EQUAL)) {
+			initializer = expression(s);	
+		}
+
+		return _make_decl_statement(l, type->type, d, initializer);
 	}
 	return statement(s);
+}
+
+stmt* return_stmt(token_stream* s) {
+	if(!syntax_match_token(s, SEMILOCON)) {
+		return _make_ret_statement(expression(s));
+	} else {
+		return _make_ret_statement(NULL);
+	}
 }
 
 void stmt_accept(stmt* statement, ast_visitor visitor) {
@@ -206,6 +251,9 @@ void stmt_accept(stmt* statement, ast_visitor visitor) {
 			break;
 		case ST_WHILE:
 			SAFE_CALL(visitor.visit_while_stmt, statement->data);
+			break;
+		case ST_RETURN:
+			SAFE_CALL(visitor.visit_ret_stmt, statement->data);
 			break;
 	}
 	SAFE_CALL(visitor.visit_stmt, statement);
