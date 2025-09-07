@@ -18,6 +18,7 @@ struct _if_stmt;
 struct _for_stmt;
 struct _while_stmt;
 struct _call_expr;
+struct _fun_def;
 
 typedef struct {
 	void (*visit_expr)(struct _expr* e);
@@ -36,6 +37,7 @@ typedef struct {
 	void (*visit_while_stmt)(struct _while_stmt* s);
 	void (*visit_ret_stmt)(struct _expr* v);
 	void (*visit_call_expr)(struct _call_expr* s);
+	void (*visit_fun_def_stmt)(struct _fun_def* s);
 } ast_visitor;
 
 typedef struct {

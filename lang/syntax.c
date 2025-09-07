@@ -24,6 +24,7 @@ static void _syntax_printer_visit_for_stmt(for_loop* e);
 static void _syntax_printer_visit_while_stmt(while_loop* e);
 static void _syntax_printer_visit_ret_stmt(expr* e);
 static void _syntax_printer_visit_call_expr(call_expr* e);
+static void _syntax_printer_visit_fun_def(fun_def* e);
 
 
 static ast_visitor _ast_printer = {
@@ -41,7 +42,8 @@ static ast_visitor _ast_printer = {
 	.visit_if_stmt         = _syntax_printer_visit_if_stmt,
 	.visit_while_stmt      = _syntax_printer_visit_while_stmt,
 	.visit_call_expr       = _syntax_printer_visit_call_expr,
-	.visit_ret_stmt        = _syntax_printer_visit_ret_stmt
+	.visit_ret_stmt        = _syntax_printer_visit_ret_stmt,
+	.visit_fun_def_stmt    = _syntax_printer_visit_fun_def
 };
 
 syntax_tree* syntax_tree_create() {
@@ -245,6 +247,18 @@ static void _syntax_printer_visit_ret_stmt(expr* v) {
 	if(v) {
 		expr_accept(v, _ast_printer);
 	} 
+}
+
+static void _syntax_printer_visit_fun_def(fun_def* e) {
+	printf("FUNC [");
+	for(int i = 0; i < e->specifiers->size; i++) {
+		printf("%s ", lex_lexem_to_string(e->specifiers->data[i]));
+	}
+	printf("%s ", lex_lexem_to_string(e->type));
+	_print_declarator(e->declarator);
+	printf("\n");
+	stmt_accept(e->body, _ast_printer);
+	printf("]");
 }
 
 void syntax_print_tree(syntax_tree* tree) {

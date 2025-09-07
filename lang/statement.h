@@ -13,7 +13,8 @@ enum stmt_type {
 	ST_IF,
 	ST_FOR,
 	ST_WHILE,
-	ST_RETURN
+	ST_RETURN,
+	ST_FUN_DEF
 };
 
 enum decl_type {
@@ -61,6 +62,13 @@ typedef struct _if_stmt {
 	stmt* body;
 	stmt* branch;
 } conditional;
+
+typedef struct _fun_def {
+	spec_list* specifiers;
+	enum lexem type;
+	declarator* declarator;
+	stmt* body;
+} fun_def;
 
 typedef struct _for_stmt {
 	stmt* initializer;

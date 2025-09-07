@@ -6,6 +6,12 @@
  * Rawr
  */
 
+i8 external_function();
+
+void* get_callback() {
+	return null;
+}
+
 i32 main() 
 {
     str string = "test 123456";

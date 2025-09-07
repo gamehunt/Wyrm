@@ -40,6 +40,14 @@ static stmt* _make_decl_statement(spec_list* specs, enum lexem type, declarator*
 	d->initializer = initializer;
 	return _make_statement(ST_DECL, d);
 }
+static stmt* _make_fun_def_statement(spec_list* specs, enum lexem type, declarator* declar, stmt* initializer) {
+	fun_def* d = malloc(sizeof(fun_def));
+	d->specifiers = specs;
+	d->type = type;
+	d->declarator = declar;
+	d->body = initializer;
+	return _make_statement(ST_FUN_DEF, d);
+}
 
 static stmt* _make_if_statement(expr* cond, stmt* body, stmt* branch) {
 	conditional* c = malloc(sizeof(conditional));
@@ -179,6 +187,9 @@ declarator* stmt_declarator(token_stream* s) {
 			d_func->args = decl_list_create();
 			while(!syntax_check_token(s, RPAREN)) {
 				stmt* d = declaration(s);
+				if(!syntax_check_token(s, RPAREN)) {
+					syntax_consume_token(s, COMMA, "',' required in arg-list");
+				}
 				if(d->type != ST_DECL) {
 					syntax_error(lex_stream_current(s), "declaration expected");
 				}
@@ -213,13 +224,13 @@ stmt* declaration(token_stream* s) {
 
 		declarator* d = stmt_declarator(s);
 
-		expr* initializer = NULL;
-
-		if(syntax_match_token(s, EQUAL)) {
-			initializer = expression(s);	
+		if (syntax_match_token(s, LBRACE)){
+			return _make_fun_def_statement(l, type->type, d, block(s));
+		} else if(syntax_match_token(s, EQUAL)) {
+			return _make_decl_statement(l, type->type, d, expression(s));
+		} else if(syntax_match_token(s, SEMILOCON)){
+			return _make_decl_statement(l, type->type, d, NULL);
 		}
-
-		return _make_decl_statement(l, type->type, d, initializer);
 	}
 	return statement(s);
 }
@@ -254,6 +265,9 @@ void stmt_accept(stmt* statement, ast_visitor visitor) {
 			break;
 		case ST_RETURN:
 			SAFE_CALL(visitor.visit_ret_stmt, statement->data);
+			break;
+		case ST_FUN_DEF:
+			SAFE_CALL(visitor.visit_fun_def_stmt, statement->data);
 			break;
 	}
 	SAFE_CALL(visitor.visit_stmt, statement);
