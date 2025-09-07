@@ -151,6 +151,7 @@ static void _print_declarator(declarator* d) {
 			printf("%s( ", ((func_declarator*)d->data)->identifier->string_value);
 			for(int i = 0; i < ((func_declarator*) d->data)->args->size; i++) {
 				_ast_printer.visit_decl_stmt(((func_declarator*) d->data)->args->data[i]);
+				printf(", ");
 			}
 			printf(") ");
 			break;

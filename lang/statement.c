@@ -228,7 +228,7 @@ stmt* declaration(token_stream* s) {
 			return _make_fun_def_statement(l, type->type, d, block(s));
 		} else if(syntax_match_token(s, EQUAL)) {
 			return _make_decl_statement(l, type->type, d, expression(s));
-		} else if(syntax_match_token(s, SEMILOCON)){
+		} else {
 			return _make_decl_statement(l, type->type, d, NULL);
 		}
 	}

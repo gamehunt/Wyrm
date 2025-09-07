@@ -6,9 +6,11 @@
  * Rawr
  */
 
+const i32 CONSTANT = 0;
+
 i8 external_function();
 
-void* get_callback() {
+void**** get_callback(i32 param1, i32 param2) {
 	return null;
 }
 

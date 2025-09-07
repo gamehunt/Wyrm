@@ -153,7 +153,7 @@ expr* term(token_stream* s) {
 		return _make_group_expr(e);
 	}
 
-	syntax_error(lex_stream_current(s), "Expression expected");
+	syntax_error(lex_stream_current(s), "expression expected");
 }
 
 expr* unary_postfix(token_stream* s) {
