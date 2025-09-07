@@ -141,7 +141,7 @@ static void _print_declarator(declarator* d) {
 	switch(d->dtype) {
 		case D_ARRAY:
 			printf("%s[%d] ", ((array_declarator*)d->data)->identifier->string_value, 
-					((array_declarator*)d->data)->identifier->integer_value);
+					((array_declarator*)d->data)->size);
 			break;
 		case D_POINTER:
 			printf("*");
