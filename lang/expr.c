@@ -1,39 +1,33 @@
 #include "expr.h"
 #include "lex.h"
 #include "syntax.h"
+#include "util.h"
 #include <stdlib.h>
 
+LIST_IMPL(args, expr*)
+
 void expr_accept(expr* e, ast_visitor visitor) {
-	if(visitor.visit_expr) {
-		visitor.visit_expr(e);
-	}
 	switch(e->type) {
 		case ET_BINARY:
-			if(visitor.visit_binary_expr) {
-				visitor.visit_binary_expr(e->data);
-			}
+			SAFE_CALL(visitor.visit_binary_expr, e->data)
 			break;
 		case ET_UNARY:
-			if(visitor.visit_unary_expr) {
-				visitor.visit_unary_expr(e->data);
-			}
+			SAFE_CALL(visitor.visit_unary_expr, e->data)
 			break;
 		case ET_GROUP:
-			if(visitor.visit_group_expr) {
-				visitor.visit_group_expr(e->data);
-			}
+			SAFE_CALL(visitor.visit_group_expr, e->data)
 			break;
 		case ET_LITERAL:
-			if(visitor.visit_literal_expr) {
-				visitor.visit_literal_expr(e->data);
-			}
+			SAFE_CALL(visitor.visit_literal_expr, e->data)
 			break;
 		case ET_ASSIGNMENT:
-			if(visitor.visit_assignment_expr) {
-				visitor.visit_assignment_expr(e->data);
-			}
+			SAFE_CALL(visitor.visit_assignment_expr, e->data)
+			break;
+		case ET_CALL:
+			SAFE_CALL(visitor.visit_call_expr, e->data)
 			break;
 	}
+	SAFE_CALL(visitor.visit_expr, e)
 }
 
 static expr* _make_expr(enum expr_type type, void* data) {
@@ -77,6 +71,12 @@ static expr* _make_assignment_expr(expr* a, enum lexem op, expr* b) {
 	e->op = op;
 	e->rvalue = b;
 	return _make_expr(ET_ASSIGNMENT, e);
+}
+static expr* _make_call_expr(expr* callee, args_list* args) {
+	call_expr* e = malloc(sizeof(call_expr));
+	e->callee = callee;
+	e->args = args;
+	return _make_expr(ET_CALL, e);
 }
 
 static void _free_expr(expr*);
@@ -137,7 +137,7 @@ expr* term(token_stream* s) {
 		return _make_literal_expr(lex_stream_previous(s));
 	} else if(syntax_match_token(s, LPAREN)) {
 		expr* e = expression(s);
-		syntax_consume_token(s, RPAREN);
+		syntax_consume_token(s, RPAREN, "expected ')' after group expression");
 		return _make_group_expr(e);
 	}
 
@@ -146,10 +146,10 @@ expr* term(token_stream* s) {
 
 expr* unary_postfix(token_stream* s) {
 	token* next = lex_stream_next(s);
-	expr* t = term(s);
+	expr* t = call(s);
 
 	if(next && (next->type == DOUBLE_PLUS || next->type == DOUBLE_MINUS)) {
-		syntax_consume_token(s, next->type);
+		syntax_consume_token(s, next->type, "expected operator after postfix");
 		return _make_unary_expr(next->type, t, 1);
 	}
 
@@ -157,9 +157,10 @@ expr* unary_postfix(token_stream* s) {
 }
 
 expr* unary(token_stream* s) {
-	if(syntax_match_tokens(s, 6, 
+	if(syntax_match_tokens(s, 8, 
 				BANG, MINUS, PLUS, 
-				TILDA, DOUBLE_PLUS, DOUBLE_MINUS)) {
+				TILDA, DOUBLE_PLUS, DOUBLE_MINUS,
+				ASTERISK, AMPERSAND)) {
 		token* op = lex_stream_previous(s);
 		expr* b = unary(s);
 		return _make_unary_expr(op->type, b, 0);
@@ -168,13 +169,24 @@ expr* unary(token_stream* s) {
 	return unary_postfix(s);
 }
 
+expr* access(token_stream* s) {
+	expr* r = unary(s);
+
+	while(syntax_match_tokens(s, 2, DOT, POINTER)) {
+		token* op = lex_stream_previous(s);
+		expr* b = unary(s);
+		r = _make_binary_expr(r, op->type, b);
+	}
+
+	return r;
+}
 
 expr* multiplication(token_stream* s) {
-	expr* r = unary(s);
+	expr* r = access(s);
 
 	while(syntax_match_tokens(s, 2, SLASH, ASTERISK)) {
 		token* op = lex_stream_previous(s);
-		expr* b = unary(s);
+		expr* b = access(s);
 		r = _make_binary_expr(r, op->type, b);
 	}
 
@@ -303,6 +315,28 @@ expr* assignment(token_stream* s) {
 	}
 
 	return l;
+}
+
+static expr* _finalize_call(token_stream* s, expr* callee) {
+	args_list* args = args_list_create();
+
+	if(!syntax_check_token(s, RPAREN)) {
+		do {
+			args_list_append(args, expression(s));
+		} while(syntax_match_token(s, COMMA));
+	}
+
+	syntax_consume_token(s, RPAREN, "')' expected after function arg list");
+
+	return _make_call_expr(callee, args);
+}
+
+expr* call(token_stream* s) {
+	expr* t = term(s);
+	while(syntax_match_token(s, LPAREN)) {
+		t = _finalize_call(s, t);
+	}
+	return t;
 }
 
 expr* expression(token_stream* s) {

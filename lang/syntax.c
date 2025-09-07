@@ -8,12 +8,22 @@
 #include "expr.h"
 #include "lex.h"
 #include "program.h"
+#include "statement.h"
 
 static void _syntax_printer_visit_unary_expr(unary_expr* e);
 static void _syntax_printer_visit_bin_expr(binary_expr* e);
 static void _syntax_printer_visit_group_expr(group_expr* e);
 static void _syntax_printer_visit_literal_expr(literal_expr* e);
 static void _syntax_printer_visit_assignment_expr(assignment_expr* e);
+static void _syntax_printer_visit_program(prog* e);
+static void _syntax_printer_visit_decl_stmt(decl* e);
+static void _syntax_printer_visit_expr_stmt(expr* e);
+static void _syntax_printer_visit_block_stmt(stmt_list* e);
+static void _syntax_printer_visit_if_stmt(conditional* e);
+static void _syntax_printer_visit_for_stmt(for_loop* e);
+static void _syntax_printer_visit_while_stmt(while_loop* e);
+static void _syntax_printer_visit_call_expr(call_expr* e);
+
 
 static ast_visitor _ast_printer = {
 	.visit_expr = NULL,
@@ -21,7 +31,15 @@ static ast_visitor _ast_printer = {
 	.visit_unary_expr      = _syntax_printer_visit_unary_expr,
 	.visit_group_expr      = _syntax_printer_visit_group_expr,
 	.visit_literal_expr    = _syntax_printer_visit_literal_expr,
-	.visit_assignment_expr = _syntax_printer_visit_assignment_expr
+	.visit_assignment_expr = _syntax_printer_visit_assignment_expr,
+	.visit_program         = _syntax_printer_visit_program,
+	.visit_decl_stmt       = _syntax_printer_visit_decl_stmt,
+	.visit_expr_stmt       = _syntax_printer_visit_expr_stmt,
+	.visit_block_stmt      = _syntax_printer_visit_block_stmt,
+	.visit_for_stmt        = _syntax_printer_visit_for_stmt,
+	.visit_if_stmt         = _syntax_printer_visit_if_stmt,
+	.visit_while_stmt      = _syntax_printer_visit_while_stmt,
+	.visit_call_expr       = _syntax_printer_visit_call_expr
 };
 
 syntax_tree* syntax_tree_create() {
@@ -37,11 +55,6 @@ static jmp_buf _error_restore_context;
 
 int syntax_build_tree(token_stream* stream, syntax_tree** result) {
     syntax_tree* tree = syntax_tree_create();
-
-	// for(int i = 0; i < stream->size; i++) {
-	// 	printf("%s ", lex_lexem_to_string(stream->tokens[i]->type));
-	// }
-	// printf("\n");
 
 	if(setjmp(_error_restore_context) == 0) {
 		tree->program = program(stream);
@@ -116,6 +129,98 @@ static void _syntax_printer_visit_assignment_expr(assignment_expr* e) {
 	printf("]");
 }
 
+static void _syntax_printer_visit_program(prog* e) {
+	printf("PROG [\n");
+	for(int i = 0; i < e->statements->size; i++) {
+		stmt_accept(e->statements->data[i], _ast_printer);
+		printf("\n");
+	}
+	printf("]\n");
+}
+
+static void _syntax_printer_visit_decl_stmt(decl* e) {
+	printf("DECL [");
+	for(int i = 0; i < e->specifiers->size; i++) {
+		printf("%s ", lex_lexem_to_string(e->specifiers->data[i]));
+	}
+	printf("%s ", lex_lexem_to_string(e->type));
+	printf("%s ", e->identifier->string_value);
+	if(e->initializer) {
+		printf(" := ");
+		expr_accept(e->initializer, _ast_printer);
+	}
+	printf("]");
+}
+
+static void _syntax_printer_visit_expr_stmt(expr* e) {
+	printf("EXPR [");
+	expr_accept(e, _ast_printer);
+	printf("]");
+}
+
+static void _syntax_printer_visit_block_stmt(stmt_list* e) {
+	printf("[");
+	for(int i = 0; i < e->size; i++) {
+		stmt_accept(e->data[i], _ast_printer);
+		printf("\n");
+	}
+	printf("]");
+}
+
+static void _syntax_printer_visit_if_stmt(conditional* e) {
+	printf("IF [{");
+	expr_accept(e->condition, _ast_printer);
+	printf("}\n");
+	stmt_accept(e->body, _ast_printer);
+	printf("]");
+	if(e->branch) {
+		printf("\nELSE [\n");
+		stmt_accept(e->branch, _ast_printer);
+		printf("]");
+	}
+}
+
+static void _syntax_printer_visit_for_stmt(for_loop* e) {
+	printf("FOR [{");
+	if(e->initializer) {
+		stmt_accept(e->initializer, _ast_printer);
+	}
+	printf("}\n{");
+	if(e->condition) {
+		expr_accept(e->condition, _ast_printer);
+	}
+	printf("}\n{");
+	if(e->increment) {
+		expr_accept(e->increment, _ast_printer);
+	}
+	printf("}\n");
+	stmt_accept(e->body, _ast_printer);
+	printf("]");
+}
+
+static void _syntax_printer_visit_while_stmt(while_loop* e) {
+	if(e->prefix) {
+		printf("DO-WHILE [{");
+	} else {
+		printf("WHILE [{");
+	}
+	expr_accept(e->condition, _ast_printer);
+	printf("}\n");
+	stmt_accept(e->body, _ast_printer);
+	printf("]");
+}
+
+static void _syntax_printer_visit_call_expr(call_expr* e) {
+	printf("CALL [");
+	expr_accept(e->callee, _ast_printer);
+	printf(" (");
+	for(int i = 0; i < e->args->size; i++) {
+		expr_accept(e->args[i].data[i], _ast_printer);
+	}
+	printf(")");
+	printf("]");
+}
+
 void syntax_print_tree(syntax_tree* tree) {
 	syntax_walk_tree(tree, _ast_printer);
 }
@@ -124,38 +229,73 @@ void syntax_walk_tree(syntax_tree* tree, ast_visitor visitor) {
 	program_accept(tree->program, visitor);
 }
 
-int syntax_match_tokens(token_stream* stream, int count, ...) {
-	token* current = lex_stream_current(stream);
-
-	va_list args;
-	va_start(args, count);
-
+static int _va_check_token(token* tok, int count, va_list args) {
 	int r = 0;
 
 	for(int i = 0; i < count; i++) {
 		enum lexem t = va_arg(args, enum lexem);
-		if(t == current->type) {
+		if(t == tok->type) {
 			r = 1;
 			break;
 		}
 	}
 
+	return r;
+}
+
+static token* _va_check_tokens(token_stream* s, int count, va_list args) {
+	token* current = lex_stream_current(s);
+	return _va_check_token(current, count, args) ? current : NULL;
+}
+
+token* syntax_check_tokens(token_stream* stream, int count, ...) {
+	va_list args;
+	va_start(args, count);
+
+	token* current = _va_check_tokens(stream, count, args);
+
 	va_end(args);
 
-	if(r) {
-		lex_stream_advance(stream);
-	}
+	return current ? current : NULL;
+}
+
+
+int syntax_check_specific_token(token* tok, int count, ...) {
+	va_list args;
+	va_start(args, count);
+
+	int r = _va_check_token(tok, count, args);
+
+	va_end(args);
 
 	return r;
 }
 
-void syntax_consume_token(token_stream* stream, enum lexem required) {
+token* syntax_match_tokens(token_stream* stream, int count, ...) {
+	va_list args;
+	va_start(args, count);
+
+	token* c = _va_check_tokens(stream, count, args);
+
+	va_end(args);
+
+	if(c) {
+		lex_stream_advance(stream);
+		return c;
+	} else {
+		return NULL;
+	}
+
+}
+
+token* syntax_consume_token(token_stream* stream, enum lexem required, const char* message) {
 	token* current = lex_stream_current(stream);
 
 	if(current->type == required) {
 		lex_stream_advance(stream);
+		return current;
 	} else {
-		syntax_error(current, "expected ')'");
+		syntax_error(current, message);
 	}
 }
 

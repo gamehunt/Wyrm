@@ -13,4 +13,9 @@
         goto error; \
     } 
 
+#define SAFE_CALL(func, ...) \
+	if(func) { \
+		func(__VA_ARGS__); \
+	}
+
 #endif

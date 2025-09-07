@@ -12,6 +12,7 @@ target_sources(hatch PRIVATE
 	hatch.c 
 	lex.c 
 	map.c 
+	list.c
 	syntax.c 
 	expr.c
 	statement.c

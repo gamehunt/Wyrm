@@ -5,13 +5,16 @@
  * Multiline comment
  * Rawr
  */
+ 
 
-i32 main() {
-    char* str = "test 123456";
-    i32 v = 12345;
-    double d = 1.22;
-    for(int i = 0; i < 10; i++) {
-        printf("TEST");
+//i32 main() 
+{
+    str string = "test 123456";
+    i32 v = 12345
+    double d = 1.22
+    for (i32 i = 0; i < 10; i++) {
+       printf("TEST");
+	   v++
     }
     return 0;
 }

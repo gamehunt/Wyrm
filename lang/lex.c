@@ -10,7 +10,8 @@
 
 #define STREAM_EOF (1 << 0)
 
-DEFINE_MAP_TYPE(enum lexem, const char*, token, builtin_string_hash, builtin_string_comparator)
+DEFINE_MAP_TYPE(token, const char*, enum lexem)
+MAP_IMPL(token, const char*, enum lexem, builtin_string_hash, builtin_string_comparator)
 
 token_map* _reserved_words;
 
@@ -235,6 +236,9 @@ static int comment(input_stream* input, int multiline) {
     if(multiline) {
         while((_current(input) != '*' || _next(input) != '/') && !_is_eof(input)) {
             char c = _advance(input);
+			if(c == '\n') {
+				input->line++;
+			}
             if(c == '/' && _match(input, '*')) {
                 comment(input, 1);
             }
@@ -292,7 +296,7 @@ int lex(char* const input, token_stream** _stream) {
         switch(c) {
         SIMPLE_MATCH(';', SEMILOCON)
         SIMPLE_MATCH(':', COLON)
-        SIMPLE_MATCH(',', PERIOD)
+        SIMPLE_MATCH(',', COMMA)
         SIMPLE_MATCH('.', DOT)
         SIMPLE_MATCH('{', LBRACE)
         SIMPLE_MATCH('}', RBRACE)
@@ -324,7 +328,7 @@ int lex(char* const input, token_stream** _stream) {
         case '<':
             SUBMATCH('<', DOUBLE_LESS)
             SUBMATCH('=', LESS_EQUAL)
-            FALLBACK(GREATER)
+            FALLBACK(LESS)
         break;
         case '-':
             SUBMATCH('>', POINTER)
@@ -434,7 +438,7 @@ const char* lex_lexem_to_string(enum lexem t) {
 	switch(t) {
     LT(SEMILOCON)
     LT(COLON)
-    LT(PERIOD)
+    LT(COMMA)
     LT(DOT)
     LT(PLUS)
     LT(DOUBLE_PLUS)
@@ -475,6 +479,7 @@ const char* lex_lexem_to_string(enum lexem t) {
     LT(NUMERIC)
     LT(WHILE)
     LT(IF)
+	LT(ELSE)
     LT(FOR)
     LT(DO)
     LT(SWITCH)

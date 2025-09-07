@@ -89,7 +89,15 @@ int compile(char* const in) {
     syntax_tree* ast;
 
     WITH_CODE_GOTO(lex(in, &tokens), "Failed to parse tokens. Code: %d\n");
+
+	for(int i = 0; i < tokens->size; i++) {
+		printf("%s ", lex_lexem_to_string(tokens->tokens[i]->type));
+	}
+	printf("\n\n");
+
     WITH_CODE_GOTO(syntax_build_tree(tokens, &ast), "Failed to build syntax tree. Code: %d\n");
+
+	syntax_print_tree(ast);
     
 error:
     lex_stream_free(tokens);

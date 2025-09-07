@@ -2,6 +2,7 @@
 #define _EXPR_H
 
 #include "lex.h"
+#include "list.h"
 #include "syntax.h"
 
 enum expr_type {
@@ -9,7 +10,8 @@ enum expr_type {
 	ET_BINARY,
 	ET_GROUP,
 	ET_LITERAL,
-	ET_ASSIGNMENT
+	ET_ASSIGNMENT,
+	ET_CALL
 };
 
 typedef struct _expr {
@@ -43,11 +45,19 @@ typedef struct _assignment_expr {
 	expr* rvalue;
 } assignment_expr;
 
+DEFINE_LIST_TYPE(args, expr*)
+
+typedef struct _call_expr {
+	expr* callee;
+	args_list* args;
+} call_expr;
+
 void expr_accept(expr* e, ast_visitor visitor);
 
 expr* term(token_stream* s);
 expr* unary_postfix(token_stream* s);
 expr* unary(token_stream* s);
+expr* access(token_stream* s);
 expr* multiplication(token_stream* s);
 expr* addition(token_stream* s);
 expr* bit_and(token_stream* s);
@@ -59,6 +69,7 @@ expr* shifts(token_stream* s);
 expr* comparison(token_stream* s);
 expr* equality(token_stream* s);
 expr* assignment(token_stream* s);
+expr* call(token_stream* s);
 expr* expression(token_stream* s);
 
 #endif
