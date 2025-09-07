@@ -211,7 +211,7 @@ static int identifier(input_stream* input, token_stream* stream) {
 
     int start = input->ptr;
 
-    while(isalnum(_current(input))) {
+    while(isalnum(_current(input)) || _current(input) == '_') {
         _advance(input);
     } 
 
@@ -284,9 +284,8 @@ void lex_init() {
     token_map_insert(_reserved_words, "false", FALSE);
 }
 
-int lex(char* const input, token_stream** _stream) {
+int lex(char* const input, token_stream* stream) {
     input_stream* is;
-    token_stream* stream = lex_stream_create();
 
     int code = 0;
     WITH_CODE(_stream_from_input(input, &is), "Failed to create input stream. Code: %d");
@@ -359,16 +358,14 @@ int lex(char* const input, token_stream** _stream) {
         default:
             if(isdigit(c)) {
                 NUMBER();
-            } else if (isalpha(c)) {
+            } else if (isalpha(c) || c == '_') {
                 IDENTIFIER();
             } else {
-                printf("Unexpected token: %c at line %d", c, is->line);
+                printf("Unexpected token: %c at line %d\n", c, is->line);
                 return 1;
             }
         }
     }
-
-    *_stream = stream;
 
     return 0;
 }
@@ -416,10 +413,12 @@ token* lex_stream_next(token_stream* stream) {
 
 void lex_stream_free(token_stream* stream) {
     for(int i = 0; i < stream->size; i++) {
-        if(stream->tokens[i]->string_value) {
-            free(stream->tokens[i]->string_value);
-        }
-        free(stream->tokens[i]);
+		if(stream->tokens[i]) {
+        	if(stream->tokens[i]->string_value) {
+        	    free(stream->tokens[i]->string_value);
+        	}
+        	free(stream->tokens[i]);
+		}
     }
     free(stream->tokens);
     free(stream);

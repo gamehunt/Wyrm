@@ -41,7 +41,7 @@ typedef struct {
 	struct _prog* program;
 } syntax_tree;
 
-int syntax_build_tree(token_stream* stream, syntax_tree** result);
+int syntax_build_tree(token_stream* stream, syntax_tree* result);
 syntax_tree* syntax_tree_create();
 void syntax_tree_free(syntax_tree* tree);
 

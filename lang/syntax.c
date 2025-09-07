@@ -53,16 +53,11 @@ void syntax_tree_free(syntax_tree* tree) {
 
 static jmp_buf _error_restore_context;
 
-int syntax_build_tree(token_stream* stream, syntax_tree** result) {
-    syntax_tree* tree = syntax_tree_create();
-
+int syntax_build_tree(token_stream* stream, syntax_tree* tree) {
 	if(setjmp(_error_restore_context) == 0) {
 		tree->program = program(stream);
-    	*result = tree;
     	return 0;
 	} else {
-		free(tree);
-		*result = NULL;
 		return 1;
 	}
 }
@@ -217,8 +212,7 @@ static void _syntax_printer_visit_call_expr(call_expr* e) {
 	for(int i = 0; i < e->args->size; i++) {
 		expr_accept(e->args[i].data[i], _ast_printer);
 	}
-	printf(")");
-	printf("]");
+	printf(")]");
 }
 
 void syntax_print_tree(syntax_tree* tree) {

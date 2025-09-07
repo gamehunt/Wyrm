@@ -88,7 +88,7 @@ typedef struct {
     int flags;
 } token_stream;
 
-int lex(char* const input,  token_stream** stream);
+int lex(char* const input,  token_stream* stream);
 
 void lex_init();
 

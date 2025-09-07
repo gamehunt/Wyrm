@@ -85,22 +85,23 @@ int read_file(const char* path, char** buffer_ptr) {
 int compile(char* const in) {
     int code = 0;
     
-    token_stream* tokens;
-    syntax_tree* ast;
+    token_stream* tokens = lex_stream_create();
+    syntax_tree* ast = syntax_tree_create();
 
-    WITH_CODE_GOTO(lex(in, &tokens), "Failed to parse tokens. Code: %d\n");
+    WITH_CODE_GOTO(lex(in, tokens), "Failed to parse tokens. Code: %d\n");
 
 	for(int i = 0; i < tokens->size; i++) {
 		printf("%s ", lex_lexem_to_string(tokens->tokens[i]->type));
 	}
 	printf("\n\n");
 
-    WITH_CODE_GOTO(syntax_build_tree(tokens, &ast), "Failed to build syntax tree. Code: %d\n");
+    WITH_CODE_GOTO(syntax_build_tree(tokens, ast), "Failed to build syntax tree. Code: %d\n");
 
 	syntax_print_tree(ast);
     
 error:
     lex_stream_free(tokens);
+	syntax_tree_free(ast);
 
     return code;
 }

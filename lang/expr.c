@@ -107,6 +107,15 @@ static void _free_assignment_expr(assignment_expr* e) {
 	free(e);
 }
 
+static void _free_call_expr(call_expr* e) {
+	_free_expr(e->callee);
+	for(int i = 0; i < e->args->size; i++) {
+		_free_expr(e->args->data[i]);
+	}
+	args_list_free(e->args);
+	free(e);
+}
+
 static void _free_expr(expr* e) {
 	if(e->data) {
 		switch(e->type) {
@@ -124,6 +133,9 @@ static void _free_expr(expr* e) {
 				break;
 			case ET_ASSIGNMENT:
 				_free_assignment_expr(e->data);
+				break;
+			case ET_CALL:
+				_free_call_expr(e->data);
 				break;
 		}
 	}
