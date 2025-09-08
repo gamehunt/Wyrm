@@ -18,7 +18,6 @@ prog* program(token_stream* s) {
 	while(!lex_stream_is_eof(s)) {
 		stmt* st = declaration(s);
 		stmt_list_append(p->statements, st);
-		syntax_match_token(s, SEMILOCON);
 	}
 	return p;
 }

@@ -26,6 +26,9 @@ void expr_accept(expr* e, ast_visitor visitor) {
 		case ET_CALL:
 			SAFE_CALL(visitor.visit_call_expr, e->data)
 			break;
+		case ET_SUBSCRIPT:
+			SAFE_CALL(visitor.visit_subscript_expr, e->data)
+			break;
 	}
 	SAFE_CALL(visitor.visit_expr, e)
 }
@@ -72,11 +75,19 @@ static expr* _make_assignment_expr(expr* a, enum lexem op, expr* b) {
 	e->rvalue = b;
 	return _make_expr(ET_ASSIGNMENT, e);
 }
+
 static expr* _make_call_expr(expr* callee, args_list* args) {
 	call_expr* e = malloc(sizeof(call_expr));
 	e->callee = callee;
 	e->args = args;
 	return _make_expr(ET_CALL, e);
+}
+
+static expr* _make_subscript_expr(expr* array, expr* subs) {
+	subscript_expr* e = malloc(sizeof(subscript_expr));
+	e->array = array;
+	e->index = subs;
+	return _make_expr(ET_SUBSCRIPT, e);
 }
 
 static void _free_expr(expr*);
@@ -116,6 +127,12 @@ static void _free_call_expr(call_expr* e) {
 	free(e);
 }
 
+static void _free_subscript_expr(subscript_expr* e) {
+	_free_expr(e->array);
+	_free_expr(e->index);
+	free(e);
+}
+
 static void _free_expr(expr* e) {
 	if(e->data) {
 		switch(e->type) {
@@ -136,6 +153,9 @@ static void _free_expr(expr* e) {
 				break;
 			case ET_CALL:
 				_free_call_expr(e->data);
+				break;
+			case ET_SUBSCRIPT:
+				_free_subscript_expr(e->data);
 				break;
 		}
 	}
@@ -158,7 +178,7 @@ expr* term(token_stream* s) {
 
 expr* unary_postfix(token_stream* s) {
 	token* next = lex_stream_next(s);
-	expr* t = call(s);
+	expr* t = subscript(s);
 
 	if(next && (next->type == DOUBLE_PLUS || next->type == DOUBLE_MINUS)) {
 		syntax_consume_token(s, next->type, "expected operator after postfix");
@@ -341,6 +361,17 @@ static expr* _finalize_call(token_stream* s, expr* callee) {
 	syntax_consume_token(s, RPAREN, "')' expected after function arg list");
 
 	return _make_call_expr(callee, args);
+}
+
+expr* subscript(token_stream* s) {
+	expr* array = call(s);
+
+	while(syntax_match_token(s, LSQBRACE)) {
+		array = _make_subscript_expr(array, expression(s));
+		syntax_consume_token(s, RSQBRACE, "']' required after array subscription");
+	}
+
+	return array;
 }
 
 expr* call(token_stream* s) {

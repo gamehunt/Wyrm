@@ -40,12 +40,12 @@ static stmt* _make_decl_statement(spec_list* specs, enum lexem type, declarator*
 	d->initializer = initializer;
 	return _make_statement(ST_DECL, d);
 }
-static stmt* _make_fun_def_statement(spec_list* specs, enum lexem type, declarator* declar, stmt* initializer) {
+static stmt* _make_fun_def_statement(spec_list* specs, enum lexem type, declarator* declar, stmt* body) {
 	fun_def* d = malloc(sizeof(fun_def));
 	d->specifiers = specs;
 	d->type = type;
 	d->declarator = declar;
-	d->body = initializer;
+	d->body = body;
 	return _make_statement(ST_FUN_DEF, d);
 }
 
@@ -79,7 +79,7 @@ stmt* statement(token_stream* s) {
 		return for_stmt(s);
 	} else if (syntax_match_token(s, IF)) {
 		return if_stmt(s);
-	} else if (syntax_match_tokens(s, DO, WHILE)) {
+	} else if (syntax_match_tokens(s, 2, DO, WHILE)) {
 		return while_stmt(s);
 	} else if (syntax_match_token(s, RETURN)) {
 		return return_stmt(s);
@@ -91,14 +91,15 @@ stmt* statement(token_stream* s) {
 }
 
 stmt* expr_statement(token_stream* s) {
-	return _make_expr_statement(expression(s));	
+	expr* e = expression(s);
+	syntax_consume_token(s, SEMILOCON, "';' required after expression statement");
+	return _make_expr_statement(e);	
 }
 
 stmt* block(token_stream* s) {
 	stmt_list* l = stmt_list_create();
 	while(!lex_stream_is_eof(s) && lex_stream_current(s)->type != RBRACE) {
 		stmt_list_append(l, declaration(s));
-		syntax_match_token(s, SEMILOCON);
 	}
 	syntax_consume_token(s, RBRACE, "'}' expected after block statement");
 	return _make_block_statement(l);
@@ -132,7 +133,6 @@ stmt* for_stmt(token_stream* s) {
 		} else {
 			initializer = expr_statement(s);
 		}
-		syntax_consume_token(s, SEMILOCON, "';' required after initializer");
 	}
 
 	if(!syntax_match_token(s, SEMILOCON)) {
@@ -158,12 +158,38 @@ stmt* while_stmt(token_stream* s) {
 		prefix = 1;
 		body = statement(s);
 		syntax_consume_token(s, WHILE, "'while' required after do block");
+		syntax_consume_token(s, LPAREN, "'(' required before while condition");
 		cond = expression(s);
+		syntax_consume_token(s, RPAREN, "')' required after while condition");
+		syntax_consume_token(s, SEMILOCON, "';' required after do-while");
 	} else {
 		cond = expression(s);
 		body = statement(s);
 	}
 	return _make_while_statement(cond, body, prefix);
+}
+
+stmt* func_arg_decl(token_stream* s) {
+	token* tok = NULL;
+	spec_list* l = spec_list_create();
+
+	while((tok = syntax_match_spec(s))) {
+		spec_list_append(l, tok->type);
+	}
+
+	token* type = syntax_match_type(s);	
+	if(type == NULL) {
+		syntax_error(lex_stream_current(s), "type specification required");
+	}
+
+	declarator* d = stmt_declarator(s);
+
+	expr* initializer = NULL;
+	if(syntax_match_token(s, EQUAL)) {
+		initializer = expression(s);
+	}
+
+	return _make_decl_statement(l, type->type, d, initializer);
 }
 
 declarator* stmt_declarator(token_stream* s) {
@@ -186,7 +212,7 @@ declarator* stmt_declarator(token_stream* s) {
 			d_func->identifier = identifier;
 			d_func->args = decl_list_create();
 			while(!syntax_check_token(s, RPAREN)) {
-				stmt* d = declaration(s);
+				stmt* d = func_arg_decl(s);
 				if(!syntax_check_token(s, RPAREN)) {
 					syntax_consume_token(s, COMMA, "',' required in arg-list");
 				}
@@ -226,21 +252,25 @@ stmt* declaration(token_stream* s) {
 
 		if (syntax_match_token(s, LBRACE)){
 			return _make_fun_def_statement(l, type->type, d, block(s));
-		} else if(syntax_match_token(s, EQUAL)) {
-			return _make_decl_statement(l, type->type, d, expression(s));
 		} else {
-			return _make_decl_statement(l, type->type, d, NULL);
+			expr* initializer = NULL;
+			if(syntax_match_token(s, EQUAL)) {
+				initializer = expression(s);
+			}
+			syntax_consume_token(s, SEMILOCON, "';' required after declaration statement");
+			return _make_decl_statement(l, type->type, d, initializer);
 		}
 	}
 	return statement(s);
 }
 
 stmt* return_stmt(token_stream* s) {
+	expr* val = NULL;
 	if(!syntax_match_token(s, SEMILOCON)) {
-		return _make_ret_statement(expression(s));
-	} else {
-		return _make_ret_statement(NULL);
-	}
+		val = expression(s);
+	} 
+	syntax_consume_token(s, SEMILOCON, "';' required after return statement");
+	return _make_ret_statement(val);
 }
 
 void stmt_accept(stmt* statement, ast_visitor visitor) {

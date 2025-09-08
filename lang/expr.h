@@ -11,7 +11,8 @@ enum expr_type {
 	ET_GROUP,
 	ET_LITERAL,
 	ET_ASSIGNMENT,
-	ET_CALL
+	ET_CALL,
+	ET_SUBSCRIPT
 };
 
 typedef struct _expr {
@@ -52,6 +53,11 @@ typedef struct _call_expr {
 	args_list* args;
 } call_expr;
 
+typedef struct _subscript_expr {
+	expr* array;
+	expr* index;
+} subscript_expr;
+
 void expr_accept(expr* e, ast_visitor visitor);
 
 expr* term(token_stream* s);
@@ -70,6 +76,7 @@ expr* comparison(token_stream* s);
 expr* equality(token_stream* s);
 expr* assignment(token_stream* s);
 expr* call(token_stream* s);
+expr* subscript(token_stream* s);
 expr* expression(token_stream* s);
 
 #endif

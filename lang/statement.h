@@ -94,5 +94,6 @@ stmt* for_stmt(token_stream* s);
 stmt* while_stmt(token_stream* s);
 stmt* return_stmt(token_stream* s);
 declarator* stmt_declarator(token_stream* s);
+stmt* func_arg_decl(token_stream* s);
 
 #endif

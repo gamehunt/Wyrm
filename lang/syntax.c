@@ -24,6 +24,7 @@ static void _syntax_printer_visit_for_stmt(for_loop* e);
 static void _syntax_printer_visit_while_stmt(while_loop* e);
 static void _syntax_printer_visit_ret_stmt(expr* e);
 static void _syntax_printer_visit_call_expr(call_expr* e);
+static void _syntax_printer_visit_subscript_expr(subscript_expr* e);
 static void _syntax_printer_visit_fun_def(fun_def* e);
 
 
@@ -43,7 +44,8 @@ static ast_visitor _ast_printer = {
 	.visit_while_stmt      = _syntax_printer_visit_while_stmt,
 	.visit_call_expr       = _syntax_printer_visit_call_expr,
 	.visit_ret_stmt        = _syntax_printer_visit_ret_stmt,
-	.visit_fun_def_stmt    = _syntax_printer_visit_fun_def
+	.visit_fun_def_stmt    = _syntax_printer_visit_fun_def,
+	.visit_subscript_expr  = _syntax_printer_visit_subscript_expr
 };
 
 syntax_tree* syntax_tree_create() {
@@ -238,9 +240,18 @@ static void _syntax_printer_visit_call_expr(call_expr* e) {
 	expr_accept(e->callee, _ast_printer);
 	printf(" (");
 	for(int i = 0; i < e->args->size; i++) {
-		expr_accept(e->args[i].data[i], _ast_printer);
+		expr_accept(e->args->data[i], _ast_printer);
+		printf(", ");
 	}
 	printf(")]");
+}
+
+static void _syntax_printer_visit_subscript_expr(subscript_expr* e) {
+	printf("SUBS [");
+	expr_accept(e->array, _ast_printer);
+	printf("[");
+	expr_accept(e->index, _ast_printer);
+	printf("]]");
 }
 
 static void _syntax_printer_visit_ret_stmt(expr* v) {
