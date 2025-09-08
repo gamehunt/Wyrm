@@ -265,6 +265,7 @@ void lex_init() {
     token_map_insert(_reserved_words, "for", FOR);
     token_map_insert(_reserved_words, "do", DO);
     token_map_insert(_reserved_words, "if", IF);
+    token_map_insert(_reserved_words, "else", ELSE);
     token_map_insert(_reserved_words, "switch", SWITCH);
     token_map_insert(_reserved_words, "return", RETURN);
     token_map_insert(_reserved_words, "u8", U8);
@@ -284,6 +285,9 @@ void lex_init() {
     token_map_insert(_reserved_words, "true", TRUE);
     token_map_insert(_reserved_words, "false", FALSE);
     token_map_insert(_reserved_words, "class", CLASS);
+	token_map_insert(_reserved_words, "continue", CONTINUE);
+	token_map_insert(_reserved_words, "break", BREAK);
+	token_map_insert(_reserved_words, "typedef", TYPEDEF);
 }
 
 int lex(char* const input, token_stream* stream) {
@@ -506,6 +510,9 @@ const char* lex_lexem_to_string(enum lexem t) {
     LT(TILDA_EQUAL)
     LT(IDENTIFIER)
 	LT(CLASS)
+	LT(CONTINUE)
+	LT(BREAK)
+	LT(TYPEDEF)
 	case _EOF:
 		return "EOF";
 	default:

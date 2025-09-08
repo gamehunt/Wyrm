@@ -14,7 +14,9 @@ enum stmt_type {
 	ST_FOR,
 	ST_WHILE,
 	ST_RETURN,
-	ST_FUN_DEF
+	ST_FUN_DEF,
+	ST_LOOP_CTRL,
+	ST_TYPEDEF
 };
 
 enum decl_type {
@@ -96,5 +98,6 @@ stmt* return_stmt(token_stream* s);
 declarator* stmt_declarator(token_stream* s);
 stmt* func_arg_decl(token_stream* s);
 stmt* class_decl(token_stream* s);
+stmt* loop_flow_stmt(token_stream* s);
 
 #endif

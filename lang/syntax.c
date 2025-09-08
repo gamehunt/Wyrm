@@ -26,6 +26,7 @@ static void _syntax_printer_visit_ret_stmt(expr* e);
 static void _syntax_printer_visit_call_expr(call_expr* e);
 static void _syntax_printer_visit_subscript_expr(subscript_expr* e);
 static void _syntax_printer_visit_fun_def(fun_def* e);
+static void _syntax_printer_visit_loop_ctrl_stmt(token* e);
 
 
 static ast_visitor _ast_printer = {
@@ -45,7 +46,8 @@ static ast_visitor _ast_printer = {
 	.visit_call_expr       = _syntax_printer_visit_call_expr,
 	.visit_ret_stmt        = _syntax_printer_visit_ret_stmt,
 	.visit_fun_def_stmt    = _syntax_printer_visit_fun_def,
-	.visit_subscript_expr  = _syntax_printer_visit_subscript_expr
+	.visit_subscript_expr  = _syntax_printer_visit_subscript_expr,
+	.visit_loop_ctrl_stmt  = _syntax_printer_visit_loop_ctrl_stmt
 };
 
 syntax_tree* syntax_tree_create() {
@@ -271,6 +273,10 @@ static void _syntax_printer_visit_fun_def(fun_def* e) {
 	printf("\n");
 	stmt_accept(e->body, _ast_printer);
 	printf("]");
+}
+
+static void _syntax_printer_visit_loop_ctrl_stmt(token* e) {
+	printf("[%s]", lex_lexem_to_string(e->type));
 }
 
 void syntax_print_tree(syntax_tree* tree) {

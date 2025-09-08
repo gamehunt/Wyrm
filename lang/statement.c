@@ -2,6 +2,7 @@
 #include "expr.h"
 #include "lex.h"
 #include "list.h"
+#include "map.h"
 #include "syntax.h"
 #include "util.h"
 #include <stdio.h>
@@ -74,6 +75,10 @@ static stmt* _make_while_statement(expr* cond, stmt* body, int prefix) {
 	return _make_statement(ST_WHILE, c);
 }
 
+static stmt* _make_loop_ctrl_statement(token* t) {
+	return _make_statement(ST_LOOP_CTRL, t);
+}
+
 stmt* statement(token_stream* s) {
 	if(syntax_match_token(s, FOR)) {
 		return for_stmt(s);
@@ -83,7 +88,9 @@ stmt* statement(token_stream* s) {
 		return while_stmt(s);
 	} else if (syntax_match_token(s, RETURN)) {
 		return return_stmt(s);
-	} else if(syntax_match_token(s, LBRACE)) {
+	} else if (syntax_match_tokens(s, 2, CONTINUE, BREAK)) {
+		return loop_flow_stmt(s);
+	} else if (syntax_match_token(s, LBRACE)) {
 		return block(s);
 	} else {
 		return expr_statement(s);
@@ -198,12 +205,12 @@ declarator* stmt_declarator(token_stream* s) {
 		d->dtype = D_POINTER;
 		d->data = stmt_declarator(s);
 	} else {
-		token* identifier = syntax_consume_token(s, IDENTIFIER, "identifier expected");
+		token* identifier = syntax_consume_token(s, IDENTIFIER, "identifier expected in declarator");
 		if(syntax_match_token(s, LSQBRACE)) {
 			d->dtype = D_ARRAY;
 			array_declarator* d_arr = malloc(sizeof(array_declarator));
 			d_arr->identifier = identifier;
-			d_arr->size = syntax_consume_token(s, INTEGER, "integer expected")->integer_value;
+			d_arr->size = syntax_consume_token(s, INTEGER, "integer expected in array size")->integer_value;
 			d->data = d_arr;
 			syntax_consume_token(s, RSQBRACE, "']' required after array declarator");
 		} else if(syntax_match_token(s, LPAREN)) {
@@ -278,6 +285,12 @@ stmt* class_decl(token_stream* s) {
 	return statement(s);
 }
 
+stmt* loop_flow_stmt(token_stream* s) {
+	stmt* st =  _make_loop_ctrl_statement(lex_stream_previous(s));
+	syntax_consume_token(s, SEMILOCON, "';' required after loop control statement");
+	return st;
+}
+
 void stmt_accept(stmt* statement, ast_visitor visitor) {
 	switch(statement->type) {
 		case ST_EXPRESSION:
@@ -303,6 +316,9 @@ void stmt_accept(stmt* statement, ast_visitor visitor) {
 			break;
 		case ST_FUN_DEF:
 			SAFE_CALL(visitor.visit_fun_def_stmt, statement->data);
+			break;
+		case ST_LOOP_CTRL:
+			SAFE_CALL(visitor.visit_loop_ctrl_stmt, statement->data);
 			break;
 	}
 	SAFE_CALL(visitor.visit_stmt, statement);

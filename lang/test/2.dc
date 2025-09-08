@@ -1,0 +1,11 @@
+token* lex_stream_next(token_stream* stream) {
+	if(stream->flags & EOF) {
+		return &_eof_token;
+	}
+
+	if(stream->ptr == stream->size - 1) {
+		return &_eof_token;
+	}
+
+	return stream->tokens[stream->ptr + 1];
+}

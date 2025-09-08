@@ -51,6 +51,8 @@ enum lexem {
     DO,
     SWITCH,
 	RETURN,
+	CONTINUE,
+	BREAK,
     U8,
     U16,
     U32,
@@ -73,6 +75,7 @@ enum lexem {
 	CLASS,
 	UNION,
     IDENTIFIER,
+	TYPEDEF
 };
 
 typedef struct {

@@ -1,4 +1,4 @@
-#include "expr.h"
+#include "statement.h"
 #ifndef _SYNTAX_H
 #define _SYNTAX_H 1
 
@@ -41,6 +41,7 @@ typedef struct {
 	void (*visit_call_expr)(struct _call_expr* s);
 	void (*visit_subscript_expr)(struct _subscript_expr* s);
 	void (*visit_fun_def_stmt)(struct _fun_def* s);
+	void (*visit_loop_ctrl_stmt)(token* s);
 } ast_visitor;
 
 typedef struct {
@@ -77,7 +78,7 @@ void syntax_error(token* l, const char* message) __attribute__((noreturn));
 			U64,\
 			STR,\
 			FLOAT,\
-			DOUBLE 
+			DOUBLE,
 
 #define TYPE_AMOUNT 12
 #define SPEC_AMOUNT 1

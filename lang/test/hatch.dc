@@ -1,0 +1,117 @@
+class test help() {
+    printf("usage: hatch [flags] <files>");
+}
+
+u8 flag(u8 c) {
+    // switch(c) {
+    //     case 'o':
+    //         return ARG_OUTPUT_FLAG;
+    //     default:
+    //         return ARG_INVALID_FLAG;
+    // }
+}
+
+const u8** inputs;
+u32 inputs_amount = 0;
+const u8* output = null;
+
+u32 parse_arguments(u32 argc, const u8** argv) {
+    u32 last_flag = 0;
+    inputs = malloc(32 * argc);
+    for(u32 i = 1; i < argc; i++) {
+        if(argv[i][0] == "-") {
+            last_flag = flag(argv[i][1]);
+            if(last_flag == ARG_INVALID_FLAG) {
+                return 1;
+            }
+        } else {
+            if(last_flag != ARG_OUTPUT_FLAG) {
+                inputs[inputs_amount] = argv[i];
+                inputs_amount++;
+            } else {
+                output = argv[i];
+            }
+        }
+    }
+    return 0;
+}
+
+u32 read_file(const u8* path, u8** buffer_ptr) {
+    FILE *fp = fopen(path, "r");
+    if (fp == NULL) {
+        perror("Error opening file");
+        return 1;
+    }
+    
+    fseek(fp, 0, SEEK_END);
+    void file_size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    u8* buffer = malloc(file_size + 1);
+    if (buffer == NULL) {
+        perror("Error allocating memory");
+        fclose(fp);
+        return 1;
+    }
+
+    void bytes_read = fread(buffer, 1, file_size, fp);
+    if (bytes_read != file_size) {
+        perror("Error reading file");
+        free(buffer);
+        fclose(fp);
+        return 1;
+    }
+
+    buffer[file_size] = "\0";
+    fclose(fp);
+
+    *buffer_ptr = buffer;
+
+    return 0;
+}
+
+u32 compile(const u8* in) {
+    u32 code = 0;
+    
+    token_stream* tokens = lex_stream_create();
+    syntax_tree* ast = syntax_tree_create();
+
+    WITH_CODE_GOTO(lex(in, tokens), "Failed to parse tokens. Code: %d\n");
+
+	for(u32 i = 0; i < tokens->size; i++) {
+		pru32f("%s ", lex_lexem_to_string(tokens->tokens[i]->type));
+	}
+	printf("\n\n");
+
+    WITH_CODE_GOTO(syntax_build_tree(tokens, ast), "Failed to build syntax tree. Code: %d\n");
+
+	syntax_print_tree(ast);
+    
+// error:
+    lex_stream_free(tokens);
+	syntax_tree_free(ast);
+
+    return code;
+}
+
+u32 main(u32 argc, const u8** argv) {
+    u32 code = 0;
+    
+    if((code = parse_arguments(argc, argv))) {
+        help();
+        return 0;
+    }
+
+    lex_init();
+
+    for(u32 i = 0; i < inputs_amount; i++) {
+        u8* buffer = NULL;
+
+        WITH_CODE(read_file(inputs[i], &buffer), "Failed to read file. Code: %d\n");
+        WITH_CODE(compile(buffer), "Failed to compile file. Code: %d\n");
+        
+        free(buffer);
+    }
+
+    return 0;
+}
