@@ -216,9 +216,6 @@ declarator* stmt_declarator(token_stream* s) {
 				if(!syntax_check_token(s, RPAREN)) {
 					syntax_consume_token(s, COMMA, "',' required in arg-list");
 				}
-				if(d->type != ST_DECL) {
-					syntax_error(lex_stream_current(s), "declaration expected");
-				}
 				decl_list_append(d_func->args, d->data);
 			}
 			d->data = d_func;
@@ -234,7 +231,10 @@ declarator* stmt_declarator(token_stream* s) {
 }
 
 stmt* declaration(token_stream* s) {
-	if(_check_type_or_spec(s)) {
+	if(syntax_match_token(s, CLASS)) {
+		return class_decl(s);
+	}
+	else if(_check_type_or_spec(s)) {
 		token* tok = NULL;
 		spec_list* l = spec_list_create();
 
@@ -271,6 +271,11 @@ stmt* return_stmt(token_stream* s) {
 	} 
 	syntax_consume_token(s, SEMILOCON, "';' required after return statement");
 	return _make_ret_statement(val);
+}
+
+stmt* class_decl(token_stream* s) {
+	token* name = syntax_consume_token(s, IDENTIFIER, "identifier required after 'class'");
+	return statement(s);
 }
 
 void stmt_accept(stmt* statement, ast_visitor visitor) {

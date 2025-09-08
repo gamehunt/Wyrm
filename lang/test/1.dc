@@ -14,6 +14,12 @@ void**** get_callback(i32 param1, i32 param2 = 0) {
 	return null;
 }
 
+class test {
+	i32 method() {
+		return 0;
+	}
+}
+
 i32 main() 
 {
     str string = "test 123456";

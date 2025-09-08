@@ -70,6 +70,8 @@ enum lexem {
     HASH,
     TILDA,
     TILDA_EQUAL,
+	CLASS,
+	UNION,
     IDENTIFIER,
 };
 

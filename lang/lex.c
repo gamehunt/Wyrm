@@ -283,6 +283,7 @@ void lex_init() {
     token_map_insert(_reserved_words, "null", NIL);
     token_map_insert(_reserved_words, "true", TRUE);
     token_map_insert(_reserved_words, "false", FALSE);
+    token_map_insert(_reserved_words, "class", CLASS);
 }
 
 int lex(char* const input, token_stream* stream) {
@@ -504,6 +505,7 @@ const char* lex_lexem_to_string(enum lexem t) {
     LT(TILDA)
     LT(TILDA_EQUAL)
     LT(IDENTIFIER)
+	LT(CLASS)
 	case _EOF:
 		return "EOF";
 	default:
