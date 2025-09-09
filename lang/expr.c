@@ -188,12 +188,24 @@ expr* unary_postfix(token_stream* s) {
 	return t;
 }
 
+expr* size_of(token_stream* s) {
+	sizeof_expr* e = malloc(sizeof(sizeof_expr));	
+	e->type = type(s);
+	return _make_expr(ET_SIZEOF, e);
+}
+
 expr* unary(token_stream* s) {
-	if(syntax_match_tokens(s, 8, 
+	token* t = NULL;
+	if((t = syntax_match_tokens(s, 9, 
 				BANG, MINUS, PLUS, 
 				TILDA, DOUBLE_PLUS, DOUBLE_MINUS,
-				ASTERISK, AMPERSAND)) {
+				ASTERISK, AMPERSAND, SIZEOF))) {
 		token* op = lex_stream_previous(s);
+		if(op->type == SIZEOF && syntax_match_token(s, LPAREN)) {
+			expr* r = size_of(s);	
+			syntax_consume_token(s, RPAREN, "')' required after type sizeof");
+			return r;
+		}
 		expr* b = unary(s);
 		return _make_unary_expr(op->type, b, 0);
 	}

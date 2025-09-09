@@ -5,6 +5,7 @@
 #include "lex.h"
 #include "list.h"
 #include "syntax.h"
+#include "type.h"
 
 enum stmt_type {
 	ST_EXPRESSION,
@@ -16,14 +17,8 @@ enum stmt_type {
 	ST_RETURN,
 	ST_FUN_DEF,
 	ST_LOOP_CTRL,
-	ST_TYPEDEF
-};
-
-enum decl_type {
-	D_VAR,
-	D_POINTER,
-	D_ARRAY,
-	D_FUNC
+	ST_TYPEDEF,
+	ST_CLASS
 };
 
 typedef struct _stmt {
@@ -31,33 +26,12 @@ typedef struct _stmt {
 	void* data;
 } stmt;
 
-typedef struct _declarator {
-	enum decl_type dtype;
-	void* data;
-} declarator;
-
 typedef struct _decl {
 	spec_list* specifiers;
-	enum lexem type;
-	declarator* declarator;
+	type_info* type;
+	token* identifier;
 	expr* initializer;
 } decl;
-
-DEFINE_LIST_TYPE(decl, decl*)
-
-typedef struct _func_declarator {
-	token* identifier;
-	decl_list* args;	
-} func_declarator;
-
-typedef struct _array_declarator {
-	token* identifier;
-	int size;
-} array_declarator;
-
-typedef struct _var_declarator {
-	token* identifier;
-} var_declarator;
 
 typedef struct _if_stmt {
 	expr* condition;
@@ -67,8 +41,9 @@ typedef struct _if_stmt {
 
 typedef struct _fun_def {
 	spec_list* specifiers;
-	enum lexem type;
-	declarator* declarator;
+	type_info* ret_type;
+	token* identifier;
+	stmt_list* params;
 	stmt* body;
 } fun_def;
 
@@ -85,6 +60,11 @@ typedef struct _while_stmt {
 	int prefix;
 } while_loop;
 
+typedef struct _typedef_stmt {
+	type_info* type;
+	token* alias;
+} typedef_stmt;
+
 void stmt_accept(stmt* statement, ast_visitor visitor);
 
 stmt* statement(token_stream* s); 
@@ -95,9 +75,11 @@ stmt* if_stmt(token_stream* s);
 stmt* for_stmt(token_stream* s);
 stmt* while_stmt(token_stream* s);
 stmt* return_stmt(token_stream* s);
-declarator* stmt_declarator(token_stream* s);
 stmt* func_arg_decl(token_stream* s);
 stmt* class_decl(token_stream* s);
 stmt* loop_flow_stmt(token_stream* s);
+stmt* var_decl(token_stream* s);
+stmt* fun_decl(token_stream* s);
+stmt* type_def(token_stream* s);
 
 #endif

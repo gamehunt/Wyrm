@@ -1,3 +1,4 @@
+#include "preprocess.h"
 #include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,12 +83,14 @@ int read_file(const char* path, char** buffer_ptr) {
     return 0;
 }
 
-int compile(char* const in) {
+int compile(char* const _in) {
     int code = 0;
     
     token_stream* tokens = lex_stream_create();
     syntax_tree* ast = syntax_tree_create();
+	char* in = NULL;
 
+	WITH_CODE_GOTO(preprocess(_in, &in), "Preprocessor failure. Code: %d\n");
     WITH_CODE_GOTO(lex(in, tokens), "Failed to parse tokens. Code: %d\n");
 
 	for(int i = 0; i < tokens->size; i++) {
@@ -100,6 +103,7 @@ int compile(char* const in) {
 	syntax_print_tree(ast);
     
 error:
+	free(in);
     lex_stream_free(tokens);
 	syntax_tree_free(ast);
 

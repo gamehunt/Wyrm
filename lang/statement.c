@@ -1,18 +1,13 @@
 #include "statement.h"
+#include "class.h"
 #include "expr.h"
 #include "lex.h"
 #include "list.h"
-#include "map.h"
 #include "syntax.h"
+#include "type.h"
 #include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
-
-LIST_IMPL(decl, decl*)
-
-static int _check_type_or_spec(token_stream* s) {
-	return syntax_check_type(s) || syntax_check_spec(s);
-}
 
 static stmt* _make_statement(enum stmt_type type, void* data) {
 	stmt* st = malloc(sizeof(stmt));
@@ -33,19 +28,20 @@ static stmt* _make_ret_statement(expr* e) {
 	return _make_statement(ST_RETURN, e);
 }
 
-static stmt* _make_decl_statement(spec_list* specs, enum lexem type, declarator* declar, expr* initializer) {
+static stmt* _make_decl_statement(spec_list* specs, type_info* type, token* ident, expr* initializer) {
 	decl* d = malloc(sizeof(decl));
 	d->specifiers = specs;
 	d->type = type;
-	d->declarator = declar;
+	d->identifier = ident;
 	d->initializer = initializer;
 	return _make_statement(ST_DECL, d);
 }
-static stmt* _make_fun_def_statement(spec_list* specs, enum lexem type, declarator* declar, stmt* body) {
+static stmt* _make_fun_def_statement(spec_list* specs, type_info* type, token* ident, stmt_list* args, stmt* body) {
 	fun_def* d = malloc(sizeof(fun_def));
 	d->specifiers = specs;
-	d->type = type;
-	d->declarator = declar;
+	d->ret_type = type;
+	d->identifier = ident;
+	d->params = args;
 	d->body = body;
 	return _make_statement(ST_FUN_DEF, d);
 }
@@ -79,6 +75,10 @@ static stmt* _make_loop_ctrl_statement(token* t) {
 	return _make_statement(ST_LOOP_CTRL, t);
 }
 
+static stmt* _make_class_statement(class_info* ci) {
+	return _make_statement(ST_CLASS, ci);
+}
+
 stmt* statement(token_stream* s) {
 	if(syntax_match_token(s, FOR)) {
 		return for_stmt(s);
@@ -92,6 +92,8 @@ stmt* statement(token_stream* s) {
 		return loop_flow_stmt(s);
 	} else if (syntax_match_token(s, LBRACE)) {
 		return block(s);
+	} else if (syntax_match_token(s, TYPEDEF)) {
+		return type_def(s);
 	} else {
 		return expr_statement(s);
 	}
@@ -105,10 +107,9 @@ stmt* expr_statement(token_stream* s) {
 
 stmt* block(token_stream* s) {
 	stmt_list* l = stmt_list_create();
-	while(!lex_stream_is_eof(s) && lex_stream_current(s)->type != RBRACE) {
+	while(!syntax_match_token(s, RBRACE)) {
 		stmt_list_append(l, declaration(s));
 	}
-	syntax_consume_token(s, RBRACE, "'}' expected after block statement");
 	return _make_block_statement(l);
 }
 
@@ -135,7 +136,7 @@ stmt* for_stmt(token_stream* s) {
 	expr* increment = NULL;
 
 	if(!syntax_match_token(s, SEMILOCON)) {
-		if(_check_type_or_spec(s)) {
+		if(syntax_check_token(s, LET)) {
 			initializer = declaration(s);
 		} else {
 			initializer = expr_statement(s);
@@ -180,95 +181,81 @@ stmt* func_arg_decl(token_stream* s) {
 	token* tok = NULL;
 	spec_list* l = spec_list_create();
 
-	while((tok = syntax_match_spec(s))) {
+	while((tok = match_spec(s))) {
 		spec_list_append(l, tok->type);
 	}
 
-	token* type = syntax_match_type(s);	
-	if(type == NULL) {
-		syntax_error(lex_stream_current(s), "type specification required");
-	}
-
-	declarator* d = stmt_declarator(s);
+	type_info* t = type(s);
+	token* ident = syntax_match_token(s, IDENTIFIER);
 
 	expr* initializer = NULL;
 	if(syntax_match_token(s, EQUAL)) {
 		initializer = expression(s);
 	}
 
-	return _make_decl_statement(l, type->type, d, initializer);
+	return _make_decl_statement(l, t, ident, initializer);
 }
 
-declarator* stmt_declarator(token_stream* s) {
-	declarator* d = malloc(sizeof(declarator));
-	if(syntax_match_token(s, ASTERISK)) {
-		d->dtype = D_POINTER;
-		d->data = stmt_declarator(s);
-	} else {
-		token* identifier = syntax_consume_token(s, IDENTIFIER, "identifier expected in declarator");
-		if(syntax_match_token(s, LSQBRACE)) {
-			d->dtype = D_ARRAY;
-			array_declarator* d_arr = malloc(sizeof(array_declarator));
-			d_arr->identifier = identifier;
-			d_arr->size = syntax_consume_token(s, INTEGER, "integer expected in array size")->integer_value;
-			d->data = d_arr;
-			syntax_consume_token(s, RSQBRACE, "']' required after array declarator");
-		} else if(syntax_match_token(s, LPAREN)) {
-			d->dtype = D_FUNC;
-			func_declarator* d_func = malloc(sizeof(func_declarator));
-			d_func->identifier = identifier;
-			d_func->args = decl_list_create();
-			while(!syntax_check_token(s, RPAREN)) {
-				stmt* d = func_arg_decl(s);
-				if(!syntax_check_token(s, RPAREN)) {
-					syntax_consume_token(s, COMMA, "',' required in arg-list");
-				}
-				decl_list_append(d_func->args, d->data);
-			}
-			d->data = d_func;
-			syntax_consume_token(s, RPAREN, "')' required after function declarator");
-		} else {
-			d->dtype = D_VAR;
-			var_declarator* d_var = malloc(sizeof(var_declarator));
-			d_var->identifier = identifier;
-			d->data = d_var;
-		}
+stmt* var_decl(token_stream* s) {
+	spec_list* l = spec_list_create();
+	token* tok = NULL;
+
+	while((tok = match_spec(s))) {
+		spec_list_append(l, tok->type);
 	}
-	return d;
+
+	type_info* t = type(s);
+	token* identifier = syntax_consume_token(s, IDENTIFIER, "identifier required");
+
+	expr* initializer = NULL;
+	if(syntax_match_token(s, EQUAL)) {
+		initializer = expression(s);
+	}
+	syntax_consume_token(s, SEMILOCON, "';' required after declaration statement");
+	return _make_decl_statement(l, t, identifier, initializer);
+}
+
+stmt* fun_decl(token_stream* s) {
+	spec_list* l = spec_list_create();
+	token* tok = NULL;
+
+	while((tok = match_spec(s))) {
+		spec_list_append(l, tok->type);
+	}
+
+	type_info* t = type(s);
+	token* identifier = syntax_consume_token(s, IDENTIFIER, "identifier required");
+
+	syntax_consume_token(s, LPAREN, "'(' required before arg list");
+
+	stmt_list* args = stmt_list_create();
+	if(!syntax_match_token(s, RPAREN)) {
+		do {
+			stmt_list_append(args, func_arg_decl(s));
+		} while(syntax_match_token(s, COMMA));
+		syntax_consume_token(s, RPAREN, "')' required after arg list");
+	}
+
+	stmt* body = NULL;
+	if(syntax_match_token(s, LBRACE)) {
+		body = block(s);
+	} else {
+		syntax_consume_token(s, SEMILOCON, "';' required after declaration statement");
+	}
+
+	return _make_fun_def_statement(l, t, identifier, args, body);
 }
 
 stmt* declaration(token_stream* s) {
 	if(syntax_match_token(s, CLASS)) {
 		return class_decl(s);
+	} else if (syntax_match_token(s, LET)){
+		return var_decl(s);
+	} else if (syntax_match_token(s, FUN)) {
+		return fun_decl(s);
+	} else {
+		return statement(s);
 	}
-	else if(_check_type_or_spec(s)) {
-		token* tok = NULL;
-		spec_list* l = spec_list_create();
-
-		while((tok = syntax_match_spec(s))) {
-			spec_list_append(l, tok->type);
-		}
-
-		token* type = syntax_match_type(s);
-
-		if(!type) {
-			syntax_error(lex_stream_current(s), "type specifier required");
-		}
-
-		declarator* d = stmt_declarator(s);
-
-		if (syntax_match_token(s, LBRACE)){
-			return _make_fun_def_statement(l, type->type, d, block(s));
-		} else {
-			expr* initializer = NULL;
-			if(syntax_match_token(s, EQUAL)) {
-				initializer = expression(s);
-			}
-			syntax_consume_token(s, SEMILOCON, "';' required after declaration statement");
-			return _make_decl_statement(l, type->type, d, initializer);
-		}
-	}
-	return statement(s);
 }
 
 stmt* return_stmt(token_stream* s) {
@@ -281,14 +268,21 @@ stmt* return_stmt(token_stream* s) {
 }
 
 stmt* class_decl(token_stream* s) {
-	token* name = syntax_consume_token(s, IDENTIFIER, "identifier required after 'class'");
-	return statement(s);
+	return _make_class_statement(class(s));
 }
 
 stmt* loop_flow_stmt(token_stream* s) {
 	stmt* st =  _make_loop_ctrl_statement(lex_stream_previous(s));
 	syntax_consume_token(s, SEMILOCON, "';' required after loop control statement");
 	return st;
+}
+
+stmt* type_def(token_stream* s) {
+	typedef_stmt* st = malloc(sizeof(typedef_stmt));
+	st->type = type(s);
+	st->alias = syntax_consume_token(s, IDENTIFIER, "type alias required");
+	syntax_consume_token(s, SEMILOCON, "';' required after typedef statement");
+	return _make_statement(ST_TYPEDEF, st);
 }
 
 void stmt_accept(stmt* statement, ast_visitor visitor) {
@@ -319,6 +313,12 @@ void stmt_accept(stmt* statement, ast_visitor visitor) {
 			break;
 		case ST_LOOP_CTRL:
 			SAFE_CALL(visitor.visit_loop_ctrl_stmt, statement->data);
+			break;
+		case ST_TYPEDEF:
+			SAFE_CALL(visitor.visit_typedef, statement->data);
+			break;
+		case ST_CLASS:
+			SAFE_CALL(visitor.visit_class, statement->data);
 			break;
 	}
 	SAFE_CALL(visitor.visit_stmt, statement);

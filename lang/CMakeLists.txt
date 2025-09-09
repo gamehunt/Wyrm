@@ -14,7 +14,11 @@ target_sources(hatch PRIVATE
 	map.c 
 	list.c
 	syntax.c 
+	syntax_ast_printer.c
 	expr.c
 	statement.c
 	program.c
+	type.c
+	preprocess.c
+	class.c
 )

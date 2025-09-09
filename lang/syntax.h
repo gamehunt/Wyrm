@@ -1,4 +1,3 @@
-#include "statement.h"
 #ifndef _SYNTAX_H
 #define _SYNTAX_H 1
 
@@ -21,6 +20,9 @@ struct _while_stmt;
 struct _call_expr;
 struct _subscript_expr;
 struct _fun_def;
+struct _type_info;
+struct _class_info;
+struct _typedef_stmt;
 
 typedef struct {
 	void (*visit_expr)(struct _expr* e);
@@ -42,6 +44,9 @@ typedef struct {
 	void (*visit_subscript_expr)(struct _subscript_expr* s);
 	void (*visit_fun_def_stmt)(struct _fun_def* s);
 	void (*visit_loop_ctrl_stmt)(token* s);
+	void (*visit_type)(struct _type_info* t);
+	void (*visit_class)(struct _class_info* c);
+	void (*visit_typedef)(struct _typedef_stmt* c);
 } ast_visitor;
 
 typedef struct {
@@ -65,55 +70,6 @@ int syntax_check_specific_token(token* tok, int count, ...);
 
 token* syntax_consume_token(token_stream* stream, enum lexem token, const char* message);
 void syntax_error(token* l, const char* message) __attribute__((noreturn));
-
-#define syntax_type_list \
-			VOID, \
-			I8, \
-			I16, \
-			I32,\
-			I64,\
-			U8,\
-			U16,\
-			U32,\
-			U64,\
-			STR,\
-			FLOAT,\
-			DOUBLE,
-
-#define TYPE_AMOUNT 12
-#define SPEC_AMOUNT 1
-
-#define syntax_spec_list \
-			CONST
-
-#define syntax_check_type(s) \
-	(syntax_check_tokens(s, TYPE_AMOUNT, \
-		syntax_type_list \
-	)) \
-
-#define syntax_check_token_type(t) \
-	(syntax_check_specific_token(t, TYPE_AMOUNT, \
-		syntax_type_list \
-	)) \
-
-#define syntax_match_type(s) \
-	(syntax_match_tokens(s, TYPE_AMOUNT, \
-		syntax_type_list \
-	)) \
-
-#define syntax_check_spec(s) \
-	(syntax_check_tokens(s, SPEC_AMOUNT, \
-		syntax_spec_list \
-	)) \
-
-#define syntax_check_token_spec(t) \
-	(syntax_check_specific_token(t, SPEC_AMOUNT, \
-		syntax_spec_list \
-	)) \
-
-#define syntax_match_spec(s) \
-	(syntax_match_tokens(s, SPEC_AMOUNT, \
-		syntax_spec_list \
-	)) \
+void syntax_error_on_current(token_stream* s, const char* message) __attribute__((noreturn));
 
 #endif

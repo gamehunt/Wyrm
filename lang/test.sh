@@ -3,4 +3,4 @@
 set -e
 
 ./build.sh
-build/hatch test/hatch.dc
+build/hatch test/1.dc

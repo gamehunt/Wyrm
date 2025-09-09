@@ -69,13 +69,18 @@ enum lexem {
     NIL,
     TRUE,
     FALSE,
-    HASH,
     TILDA,
     TILDA_EQUAL,
 	CLASS,
 	UNION,
+	LET,
+	FUN,
     IDENTIFIER,
-	TYPEDEF
+	TYPEDEF,
+	SIZEOF,
+	PUBLIC,
+	PRIVATE,
+	PROTECTED
 };
 
 typedef struct {
@@ -92,6 +97,7 @@ typedef struct {
     int size;
     int ptr;
     int flags;
+	int last_line;
 } token_stream;
 
 int lex(char* const input,  token_stream* stream);

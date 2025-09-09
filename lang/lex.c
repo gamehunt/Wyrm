@@ -73,14 +73,6 @@ token* _lex_create_token(token_stream* s, enum lexem type, int line) {
         is->line++; \
         break;
 
-#define COMMENT() \
-    case '/': \
-        if (_match(is, '/')) { \
-        } else { \
-            _lex_create_token(stream, SLASH); \
-        } \
-        break;
-
 #define STRING() \
     case '"': \
         WITH_CODE(string(is, stream), "Unterminated string. Code: %d"); \
@@ -147,6 +139,7 @@ static int _stream_from_input(char* const input, input_stream** result) {
     s->data = input; 
     s->ptr = 0;
     s->size = strlen(input);
+	s->line = 0;
     *result = s;
     return 0;
 }
@@ -233,6 +226,7 @@ static int identifier(input_stream* input, token_stream* stream) {
 }
 
 static int comment(input_stream* input, int multiline) {
+	input->line++;
     if(multiline) {
         while((_current(input) != '*' || _next(input) != '/') && !_is_eof(input)) {
             char c = _advance(input);
@@ -288,6 +282,12 @@ void lex_init() {
 	token_map_insert(_reserved_words, "continue", CONTINUE);
 	token_map_insert(_reserved_words, "break", BREAK);
 	token_map_insert(_reserved_words, "typedef", TYPEDEF);
+	token_map_insert(_reserved_words, "sizeof", SIZEOF);
+	token_map_insert(_reserved_words, "let", LET);
+	token_map_insert(_reserved_words, "fun", FUN);
+	token_map_insert(_reserved_words, "public", PUBLIC);
+	token_map_insert(_reserved_words, "protected", PROTECTED);
+	token_map_insert(_reserved_words, "private", PRIVATE);
 }
 
 int lex(char* const input, token_stream* stream) {
@@ -305,7 +305,6 @@ int lex(char* const input, token_stream* stream) {
         SIMPLE_MATCH('.', DOT)
         SIMPLE_MATCH('{', LBRACE)
         SIMPLE_MATCH('}', RBRACE)
-        SIMPLE_MATCH('#', HASH)
         case '~':
             SUBMATCH('=', TILDA_EQUAL)
             FALLBACK(TILDA)
@@ -355,6 +354,9 @@ int lex(char* const input, token_stream* stream) {
             SUBMATCH_CALL('/', comment(is, 0);)
             SUBMATCH_CALL('*', WITH_CODE(comment(is, 1), "Unterminated multiline comment. Code: %d");)
             FALLBACK(SLASH)
+		case '#':
+			comment(is, 0);
+			break;
         break;
         IGNORE(' ')
         IGNORE('\t')
@@ -362,7 +364,7 @@ int lex(char* const input, token_stream* stream) {
         NEWLINE()
         STRING()
         default:
-            if(isdigit(c)) {
+			if(isdigit(c)) {
                 NUMBER();
             } else if (isalpha(c) || c == '_') {
                 IDENTIFIER();
@@ -372,6 +374,10 @@ int lex(char* const input, token_stream* stream) {
             }
         }
     }
+
+	if(stream->size) {
+		stream->last_line = stream->tokens[stream->size - 1]->line;	
+	}
 
     return 0;
 }
@@ -398,6 +404,8 @@ token* lex_stream_current(token_stream* stream) {
 }
 
 token* lex_stream_previous(token_stream* stream) {
+	_eof_token.line = stream->last_line;
+
 	if(stream->ptr == 0) {
         return &_eof_token;
 	}
@@ -406,6 +414,8 @@ token* lex_stream_previous(token_stream* stream) {
 }
 
 token* lex_stream_next(token_stream* stream) {
+	_eof_token.line = stream->last_line;
+
 	if(stream->flags & EOF) {
 		return &_eof_token;
 	}
@@ -505,7 +515,6 @@ const char* lex_lexem_to_string(enum lexem t) {
     LT(NIL)
     LT(TRUE)
     LT(FALSE)
-    LT(HASH)
     LT(TILDA)
     LT(TILDA_EQUAL)
     LT(IDENTIFIER)
@@ -513,6 +522,12 @@ const char* lex_lexem_to_string(enum lexem t) {
 	LT(CONTINUE)
 	LT(BREAK)
 	LT(TYPEDEF)
+	LT(LET)
+	LT(FUN)
+	LT(PUBLIC)
+	LT(PROTECTED)
+	LT(PRIVATE)
+	LT(SIZEOF)
 	case _EOF:
 		return "EOF";
 	default:

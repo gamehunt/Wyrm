@@ -4,6 +4,7 @@
 #include "lex.h"
 #include "list.h"
 #include "syntax.h"
+#include "type.h"
 
 enum expr_type {
 	ET_UNARY,
@@ -12,7 +13,8 @@ enum expr_type {
 	ET_LITERAL,
 	ET_ASSIGNMENT,
 	ET_CALL,
-	ET_SUBSCRIPT
+	ET_SUBSCRIPT,
+	ET_SIZEOF
 };
 
 typedef struct _expr {
@@ -58,6 +60,11 @@ typedef struct _subscript_expr {
 	expr* index;
 } subscript_expr;
 
+typedef struct _sizeof_expr {
+	expr* expr;
+	type_info* type;
+} sizeof_expr;
+
 void expr_accept(expr* e, ast_visitor visitor);
 
 expr* term(token_stream* s);
@@ -78,5 +85,6 @@ expr* assignment(token_stream* s);
 expr* call(token_stream* s);
 expr* subscript(token_stream* s);
 expr* expression(token_stream* s);
+expr* size_of(token_stream* s);
 
 #endif
