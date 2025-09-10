@@ -6,7 +6,11 @@
 
 MAP_IMPL(compile_defs, const char*, int, builtin_string_hash, builtin_string_comparator)
 
+DEFINE_MAP_TYPE(known_directives, const char*, enum directives);
+MAP_IMPL(known_directives, const char*, enum directives, builtin_string_hash, builtin_string_comparator);
+
 static compile_defs_map* _global_compile_defs = NULL;
+static known_directives_map* _known_directives = NULL;
 
 int preprocess_is_defined(compile_defs_map* local_defines, const char* key) {
 	return compile_defs_map_contains(_global_compile_defs, key) ||
@@ -81,7 +85,7 @@ void conditional(char** out, size_t i, int success, char* branch, char* end) {
 
 int directive(char** out, size_t* i, compile_defs_map* m) {
 	char* copy = strdup(*out);
-	char* directive = strtok(&copy[*i], " ");	
+	char* directive = strtok(&copy[*i], " \n");	
 
 	*i += strlen(directive);
 
@@ -89,22 +93,28 @@ int directive(char** out, size_t* i, compile_defs_map* m) {
 
 	*i += strlen(args);
 
-	if(!strcmp(directive, "define")) {
-		char* name  = strtok(args, " ");
-		char* value = strtok(NULL, "\n");
-		compile_defs_map_insert(m, name, 1);
-		expand_macro(name, value, *i, out);
-	} else if (!strcmp(directive, "ifdef")) {
-		char* name   = strtok(args, "\n");
-		char* end    = strstr(*out, "#endif");
-		char* branch = strstr(*out, "#else");
-		conditional(out, *i, preprocess_is_defined(m, name), branch, end);
-	} else if (!strcmp(directive, "ifndef")) {
-		char* name   = strtok(args, "\n");
-		char* end    = strstr(*out, "#endif");
-		char* branch = strstr(*out, "#else");
-		conditional(out, *i, !preprocess_is_defined(m, name), branch, end);
-	} else if (strcmp(directive, "endif")) {
+	enum directives* dir = known_directives_map_get(_known_directives, directive);
+
+	if(dir) {
+		enum directives actual_dir = *dir;
+		if (actual_dir == D_DEFINE) {
+			char* name  = strtok(args, " ");
+			char* value = strtok(NULL, "\n");
+			compile_defs_map_insert(m, name, 1);
+			expand_macro(name, value, *i, out);
+		} else if (actual_dir == D_IFDEF || actual_dir == D_IFNDEF) {
+			char* name   = strtok(args, "\n");
+			char* end    = strstr(*out, "#endif");
+			char* branch = strstr(*out, "#else");
+			if(actual_dir == D_IFDEF) {
+				conditional(out, *i, preprocess_is_defined(m, name), branch, end);
+			} else {
+				conditional(out, *i, !preprocess_is_defined(m, name), branch, end);
+			}
+		} else if(actual_dir == D_INCLUDE) {
+			// TODO
+		}
+	} else {
 		printf("Preprocessor warning: unknown directive: %s\n", directive);
 	}
 
@@ -133,8 +143,23 @@ int preprocess(const char* in, char** _out) {
 }
 
 void preprocess_init(int count, const char** extra) {
+	_known_directives = known_directives_map_create();
+	known_directives_map_insert(_known_directives, "define", D_DEFINE);
+	known_directives_map_insert(_known_directives, "ifdef", D_IFDEF);
+	known_directives_map_insert(_known_directives, "ifndef", D_IFNDEF);
+	known_directives_map_insert(_known_directives, "else", D_ELSE);
+	known_directives_map_insert(_known_directives, "endif", D_ENDIF);
+	known_directives_map_insert(_known_directives, "include", D_INCLUDE);
+	known_directives_map_insert(_known_directives, "error", D_ERROR);
+	known_directives_map_insert(_known_directives, "warning", D_WARNING);
+	known_directives_map_insert(_known_directives, "line", D_LINE);
+
 	_global_compile_defs = compile_defs_map_create();
 	for(int i = 0; i < count; i++) {
 		compile_defs_map_insert(_global_compile_defs, extra[i], 1);
 	}
+}
+
+enum directives* preprocess_get_directive(const char* key) {
+	return known_directives_map_get(_known_directives, key);
 }

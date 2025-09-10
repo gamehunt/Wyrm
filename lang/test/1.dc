@@ -12,7 +12,8 @@
 
 typedef **void double_void_ptr;
 
-#ifndef NO
+#ifdef NO
+#error test
 let const i32 CONSTANT = COOL_CONST;
 #else
 let const i32 BRANCH = 11111;
@@ -23,6 +24,7 @@ fun i8 external_function();
 fun ****void get_callback(i32 param1, i32 param2 = COOL_CONST) {
 	return null;
 }
+
 
 class test {
 	public let i32 variable;

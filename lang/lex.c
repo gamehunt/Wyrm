@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "map.h"
+#include "preprocess.h"
 #include "util.h"
 
 #define STREAM_EOF (1 << 0)
@@ -225,8 +226,40 @@ static int identifier(input_stream* input, token_stream* stream) {
     return 0;
 }
 
+static int directive(input_stream* input) {
+	_advance(input);
+
+	int start = input->ptr;
+
+    while(_current(input) != '\n' && !_is_eof(input)) {
+        _advance(input);
+    }
+
+    char* line  = _slice(input, start);
+	char* direc = strtok(line, " "); 
+	char* args  = strtok(NULL, "\0");
+
+	enum directives* d = preprocess_get_directive(direc);
+
+	int code = 0;
+
+	if(d) {
+		if(*d == D_ERROR) {
+			printf("#error at line %d: %s\n", input->line, args);	
+			code = 1;
+		} else if (*d == D_WARNING) {
+			printf("#warning at line %d: %s\n", input->line, args);	
+		} else if (*d == D_LINE) {
+			input->line = atoi(args);
+		}
+	}
+
+	free(line);
+
+	return code;
+}
+
 static int comment(input_stream* input, int multiline) {
-	input->line++;
     if(multiline) {
         while((_current(input) != '*' || _next(input) != '/') && !_is_eof(input)) {
             char c = _advance(input);
@@ -354,10 +387,12 @@ int lex(char* const input, token_stream* stream) {
             SUBMATCH_CALL('/', comment(is, 0);)
             SUBMATCH_CALL('*', WITH_CODE(comment(is, 1), "Unterminated multiline comment. Code: %d");)
             FALLBACK(SLASH)
+		break;
 		case '#':
-			comment(is, 0);
+			if(directive(is)) {
+				return 1;
+			}
 			break;
-        break;
         IGNORE(' ')
         IGNORE('\t')
         IGNORE('\r')
