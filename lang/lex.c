@@ -174,7 +174,7 @@ static int number(input_stream* input, token_stream* stream) {
 
     int d = 0;
 
-    while(isdigit(_current(input))) {
+    while(isalnum(_current(input))) {
         _advance(input);
     }
 
@@ -190,7 +190,13 @@ static int number(input_stream* input, token_stream* stream) {
 
     if(d == 0) {
         token* s = _lex_create_token(stream, INTEGER, input->line);
-        s->integer_value = atoi(tmp);
+		if(tmp[0] == '0' && (tmp[1] == 'x' || tmp[1] == 'X')) {
+        	s->integer_value = strtol(&tmp[2], NULL, 16);
+		} else if(tmp[0] == '0' && (tmp[1] == 'o' || tmp[1] == 'O')) {
+        	s->integer_value = strtol(&tmp[2], NULL, 8);
+		} else {
+        	s->integer_value = atoi(tmp);
+		}
     } else {
         token* s = _lex_create_token(stream, NUMERIC, input->line);
         s->double_value = atof(tmp);
@@ -321,6 +327,8 @@ void lex_init() {
 	token_map_insert(_reserved_words, "public", PUBLIC);
 	token_map_insert(_reserved_words, "protected", PROTECTED);
 	token_map_insert(_reserved_words, "private", PRIVATE);
+	token_map_insert(_reserved_words, "static", STATIC);
+	token_map_insert(_reserved_words, "this", THIS);
 }
 
 int lex(char* const input, token_stream* stream) {
@@ -563,6 +571,8 @@ const char* lex_lexem_to_string(enum lexem t) {
 	LT(PROTECTED)
 	LT(PRIVATE)
 	LT(SIZEOF)
+	LT(STATIC)
+	LT(THIS)
 	case _EOF:
 		return "EOF";
 	default:

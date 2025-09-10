@@ -13,6 +13,7 @@ enum access_qualifiers {
 };
 
 typedef struct _q_stmt {
+	int is_static;
 	enum access_qualifiers qualifier;	
 	stmt* declaration;
 } qualified_statement;

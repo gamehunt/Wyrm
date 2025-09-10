@@ -26,6 +26,9 @@ q_stmt_list* class_body(token_stream* s) {
 		if(t) {
 			qs->qualifier = _tok_to_qualifier(t);
 		}
+		if(syntax_match_token(s, STATIC)) {
+			qs->is_static = 1;
+		}
 		if(syntax_match_token(s, LET)) {
 			qs->declaration = var_decl(s);
 		} else if(syntax_match_token(s, FUN)) {

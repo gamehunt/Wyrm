@@ -100,6 +100,9 @@ static void _syntax_printer_visit_literal_expr(literal_expr* e) {
 		case IDENTIFIER:
 			printf("%s", e->value->string_value);
 			break;
+		case THIS:
+			printf("THIS");
+			break;
 		default:
 			printf("UNKNOWN");
 			break;
@@ -265,6 +268,9 @@ static void _syntax_printer_visit_class(class_info* e) {
 	if(e->body) {
 		for(int i = 0; i < e->body->size; i++) {
 			printf("%s ", access_qualifier_to_string(e->body->data[i]->qualifier));
+			if(e->body->data[i]->is_static) {
+				printf("STATIC ");
+			}
 			stmt_accept(e->body->data[i]->declaration, _ast_printer);	
 			printf("\n");
 		}

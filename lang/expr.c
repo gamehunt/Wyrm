@@ -163,9 +163,9 @@ static void _free_expr(expr* e) {
 }
 
 expr* term(token_stream* s) {
-	if(syntax_match_tokens(s, 7, 
+	if(syntax_match_tokens(s, 8, 
 				STRING, INTEGER, NUMERIC, 
-				NIL, FALSE, TRUE, IDENTIFIER)) {
+				NIL, FALSE, TRUE, IDENTIFIER, THIS)) {
 		return _make_literal_expr(lex_stream_previous(s));
 	} else if(syntax_match_token(s, LPAREN)) {
 		expr* e = expression(s);

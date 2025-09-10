@@ -30,7 +30,12 @@ class test {
 	public let i32 variable;
 
 	fun i32 method() {
-		return 0;
+		this->variable = 0;
+		return variable;
+	}
+
+	public static fun i32 static_method() {
+		return 0xFF;
 	}
 }
 

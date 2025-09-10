@@ -80,7 +80,9 @@ enum lexem {
 	SIZEOF,
 	PUBLIC,
 	PRIVATE,
-	PROTECTED
+	PROTECTED,
+	STATIC,
+	THIS
 };
 
 typedef struct {
