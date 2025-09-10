@@ -8,6 +8,7 @@
 
 #define ARG_INVALID_FLAG -1
 #define ARG_OUTPUT_FLAG   1
+#define ARG_DEF_FLAG      2
 
 #define MAX_INPUTS 128
 
@@ -19,6 +20,8 @@ int flag(char c) {
     switch(c) {
         case 'o':
             return ARG_OUTPUT_FLAG;
+		case 'D':
+			return ARG_DEF_FLAG;
         default:
             return ARG_INVALID_FLAG;
     }
@@ -26,11 +29,14 @@ int flag(char c) {
 
 const char** inputs;
 int inputs_amount = 0;
-const char* output = NULL;
+const char*  output = NULL;
+const char** defs = NULL;
+int def_amount = 0;
 
 int parse_arguments(int argc, const char** argv) {
     int last_flag = 0;
     inputs = malloc(sizeof(char*) * argc);
+	defs = malloc(sizeof(char*) * argc);
     for(int i = 1; i < argc; i++) {
         if(argv[i][0] == '-') {
             last_flag = flag(argv[i][1]);
@@ -38,12 +44,16 @@ int parse_arguments(int argc, const char** argv) {
                 return 1;
             }
         } else {
-            if(last_flag != ARG_OUTPUT_FLAG) {
+			if(last_flag == ARG_OUTPUT_FLAG) {
+                output = argv[i];
+			} else if(last_flag == ARG_DEF_FLAG) {
+				defs[def_amount] = argv[i];
+				def_amount++;	
+			} else {
                 inputs[inputs_amount] = argv[i];
                 inputs_amount++;
-            } else {
-                output = argv[i];
-            }
+			}
+			last_flag = 0;
         }
     }
     return 0;
@@ -91,6 +101,8 @@ int compile(char* const _in) {
 	char* in = NULL;
 
 	WITH_CODE_GOTO(preprocess(_in, &in), "Preprocessor failure. Code: %d\n");
+	printf("%s\n", in);
+
     WITH_CODE_GOTO(lex(in, tokens), "Failed to parse tokens. Code: %d\n");
 
 	for(int i = 0; i < tokens->size; i++) {
@@ -118,6 +130,7 @@ int main(int argc, const char** argv) {
         return 0;
     }
 
+	preprocess_init(def_amount, defs);
     lex_init();
 
     for(int i = 0; i < inputs_amount; i++) {

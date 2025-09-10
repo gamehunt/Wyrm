@@ -8,11 +8,15 @@
 
 #include <my_header.h>
 
-#define COOL_CONST (1 << 0)
+#define COOL_CONST (1 << 10)
 
 typedef **void double_void_ptr;
 
+#ifndef NO
 let const i32 CONSTANT = COOL_CONST;
+#else
+let const i32 BRANCH = 11111;
+#endif
 
 fun i8 external_function();
 
